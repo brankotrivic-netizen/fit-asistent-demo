@@ -195,6 +195,7 @@
   }
   td { padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
   tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   td .none { color: var(--danger); font-weight: 600; font-size: 12.5px; }
 
   .missing-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -405,6 +406,40 @@ const EMAILS = [
     sheet: { stranka: "Nina Zorko", podjetje: "TransLog d.o.o.", sistem: "požarni sistem (skladišče 2.000 m², Koper)", manjka: "dokumentacija, tip blaga, naslov", status: "Čaka pregled" }
   },
   {
+    id: "m6",
+    from: "Rok Pirc — Elektroinštalacije Pirc",
+    fromEmail: "rok.pirc@elektro-pirc.si",
+    time: "09:35",
+    subj: "Povpraševanje po popisu — poslovna stavba Kranj",
+    snip: "Pozdravljeni, za investitorja opremljamo poslovno stavbo v Kranju. Po popisu rabimo: 8x IP kamera zunanja …",
+    body: "Pozdravljeni,\nza investitorja opremljamo poslovno stavbo v Kranju. Po popisu rabimo:\n- 8x IP kamera zunanja\n- 1x snemalnik 16-kanalni\n- 12x javljalnik gibanja\n- 2x čitalec kartic za vhod\n- 1x alarmna centrala\n- zunanja sirena\nProsim za ponudbo za dobavo in montažo.\nRok Pirc, Elektroinštalacije Pirc d.o.o.",
+    intent: "Novo povpraševanje — montaža po popisu",
+    intentClass: "intent",
+    conf: "Zanesljivost 93 %",
+    flags: [ { t: "Sprašuje po ceni", c: "warn" }, { t: "Partner/izvajalec — projekt za investitorja", c: "warn" } ],
+    summary: "Elektroinštalater opremlja poslovno stavbo v Kranju za investitorja in pošilja konkreten popis: video nadzor, protivlomni sistem in kontrola pristopa — skupaj 6 postavk s količinami. Pri zunanji sireni količina manjka, osnutek odgovora jo že vpraša. Vse količine so izpisane v tabeli spodaj — nič pretipkavanja.",
+    items: [
+      { sys: "Video nadzor", obj: "Poslovna stavba (novogradnja/obnova)", loc: "Kranj", note: "8 kamer + snemalnik" },
+      { sys: "Alarmni sistem (protivlomni)", obj: "Ista stavba", loc: "Kranj", note: "centrala + 12 javljalnikov + sirena" },
+      { sys: "Kontrola pristopa", obj: "Vhod — 2 čitalca kartic", loc: "Kranj", note: "—" }
+    ],
+    qtyItems: [
+      { el: "IP kamera, zunanja", qty: "8", unit: "kos", note: "model ni naveden" },
+      { el: "Snemalnik (NVR), 16-kanalni", qty: "1", unit: "kos", note: "—" },
+      { el: "Javljalnik gibanja", qty: "12", unit: "kos", note: "—" },
+      { el: "Čitalec kartic (kontrola pristopa)", qty: "2", unit: "kos", note: "vhod" },
+      { el: "Alarmna centrala", qty: "1", unit: "kos", note: "—" },
+      { el: "Zunanja sirena", qty: null, unit: "kos", note: "količina ni navedena" }
+    ],
+    missing: [
+      { text: "Zunanja sirena: količina ni navedena — osnutek odgovora jo že vpraša.", crit: true },
+      { text: "Ali obstaja projektna dokumentacija (načrt razvoda, PZI)? Pomembno za ponudbo montaže.", crit: false },
+      { text: "Želeni rok izvedbe ni naveden.", crit: false }
+    ],
+    draft: "Pozdravljeni, g. Pirc,\n\nhvala za povpraševanje. Zabeležili smo popis za poslovno stavbo v Kranju:\n• IP kamera zunanja — 8 kos\n• snemalnik 16-kanalni — 1 kos\n• javljalnik gibanja — 12 kos\n• čitalec kartic — 2 kos\n• alarmna centrala — 1 kos\n• zunanja sirena — prosimo, potrdite še količino\n\nZa ponudbo z montažo prosimo še za projektno dokumentacijo oz. načrt razvoda, če obstaja, in vaš želeni rok izvedbe.\n\nPredlagamo tudi kratek ogled objekta ali tehnični posvet: [TERMIN OGLEDA]. Ponudbo za dobavo in montažo pripravimo takoj zatem: [CENA].\n\nLep pozdrav,",
+    sheet: { stranka: "Rok Pirc", podjetje: "Elektroinštalacije Pirc d.o.o.", sistem: "video + alarm + pristop (popis, poslovna stavba Kranj)", manjka: "količina sirene, dokumentacija, rok", status: "Čaka pregled" }
+  },
+  {
     id: "m3",
     from: "Tadej Oblak — ŠD Vrhnika",
     fromEmail: "tadej.oblak@sd-vrhnika.si",
@@ -542,6 +577,18 @@ function render(m) {
            '<td>' + esc(it.obj) + '</td>' +
            '<td>' + esc(it.loc) + '</td>' +
            '<td>' + (it.note ? esc(it.note) : '—') + '</td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+  }
+
+  if (m.qtyItems) {
+    h += '<div class="sec"><div class="sec-label">Popis elementov s količinami</div><div class="tbl-wrap"><table>' +
+         '<thead><tr><th>Element</th><th>Količina</th><th>Enota</th><th>Opomba</th></tr></thead><tbody>';
+    m.qtyItems.forEach(it => {
+      h += '<tr><td>' + esc(it.el) + '</td>' +
+           '<td class="num">' + (it.qty ? '<b>' + esc(it.qty) + '</b>' : '<span class="none">manjka</span>') + '</td>' +
+           '<td>' + (it.unit ? esc(it.unit) : '—') + '</td>' +
+           '<td>' + (it.note && it.note !== '—' ? esc(it.note) : '—') + '</td></tr>';
     });
     h += '</tbody></table></div></div>';
   }
