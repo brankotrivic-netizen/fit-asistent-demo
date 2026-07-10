@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Demo prikaz AI prodajnega asistenta za FIT Varovanje — obdelava povpraševanj iz e-pošte s človeško potrditvijo.">
+<title>FIT Varovanje — AI Prodajni Asistent (demo)</title>
+<style>
+  :root {
+    --bg: #F7F7F7;
+    --surface: #FFFFFF;
+    --surface-2: #F0F0F0;
+    --ink: #111111;
+    --muted: #6B6B6B;
+    --line: #E4E4E4;
+    --accent: #E8193C;
+    --accent-ink: #B5102A;
+    --accent-soft: #FDE9ED;
+    --warn: #8F5400;
+    --warn-bg: #FBF0DA;
+    --warn-line: #E8CD9A;
+    --danger: #8E1024;
+    --danger-bg: #FADFE3;
+    --ok: #1B7A43;
+    --ok-bg: #E2F2E8;
+    --shadow: 0 1px 2px rgba(17,17,17,.06), 0 8px 24px rgba(17,17,17,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131113;
+      --surface: #1B181A;
+      --surface-2: #241F22;
+      --ink: #F0EBEC;
+      --muted: #A39A9D;
+      --line: #362F33;
+      --accent: #FF5C74;
+      --accent-ink: #FF8BA0;
+      --accent-soft: #3A121B;
+      --warn: #E5A54B;
+      --warn-bg: #322609;
+      --warn-line: #57431C;
+      --danger: #F08A9B;
+      --danger-bg: #42121D;
+      --ok: #5CC287;
+      --ok-bg: #16301F;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131113; --surface: #1B181A; --surface-2: #241F22; --ink: #F0EBEC;
+    --muted: #A39A9D; --line: #362F33; --accent: #FF5C74; --accent-ink: #FF8BA0;
+    --accent-soft: #3A121B; --warn: #E5A54B; --warn-bg: #322609; --warn-line: #57431C;
+    --danger: #F08A9B; --danger-bg: #42121D; --ok: #5CC287; --ok-bg: #16301F;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #F7F7F7; --surface: #FFFFFF; --surface-2: #F0F0F0; --ink: #111111;
+    --muted: #6B6B6B; --line: #E4E4E4; --accent: #E8193C; --accent-ink: #B5102A;
+    --accent-soft: #FDE9ED; --warn: #8F5400; --warn-bg: #FBF0DA; --warn-line: #E8CD9A;
+    --danger: #8E1024; --danger-bg: #FADFE3; --ok: #1B7A43; --ok-bg: #E2F2E8;
+    --shadow: 0 1px 2px rgba(17,17,17,.06), 0 8px 24px rgba(17,17,17,.08);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 18px 0 0; flex-wrap: wrap; }
+  .brand { font-weight: 800; font-size: 17px; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+  .brand-dot {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--accent); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 15px; flex: none;
+  }
+  .brand .co { color: var(--accent-ink); }
+  .demo-chip {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    border: 1px solid var(--warn-line); color: var(--warn); background: var(--warn-bg);
+    padding: 3px 10px; border-radius: 999px;
+  }
+
+  .hero { padding: 30px 0 10px; }
+  .hero h1 {
+    font-size: clamp(24px, 3.6vw, 34px);
+    line-height: 1.15; letter-spacing: -.02em; margin: 0 0 10px;
+    text-wrap: balance; max-width: 26ch;
+  }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p.lead { color: var(--muted); max-width: 66ch; margin: 0 0 18px; }
+  .principle { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .p-step {
+    background: var(--surface); border: 1px solid var(--line);
+    padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  }
+  .p-step.human { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+  .p-arrow { color: var(--muted); font-size: 13px; }
+
+  .app {
+    display: grid; grid-template-columns: 340px 1fr; gap: 0;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    overflow: hidden; box-shadow: var(--shadow); margin: 22px 0 14px;
+  }
+  @media (max-width: 860px) { .app { grid-template-columns: 1fr; } }
+
+  .pane-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); padding: 14px 18px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .pane-label .addr { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--ink); }
+
+  .inbox { border-right: 1px solid var(--line); background: var(--surface-2); min-width: 0; }
+  @media (max-width: 860px) { .inbox { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .mail {
+    display: block; width: 100%; text-align: left; border: 0; cursor: pointer;
+    background: transparent; color: inherit; font: inherit;
+    padding: 13px 18px; border-top: 1px solid var(--line); position: relative;
+  }
+  .mail:hover { background: var(--surface); }
+  .mail:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .mail.active { background: var(--surface); }
+  .mail.active::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent);
+  }
+  .mail .from { font-weight: 700; font-size: 13.5px; display: flex; justify-content: space-between; gap: 8px; }
+  .mail .from time { color: var(--muted); font-weight: 500; font-size: 12px; flex: none; }
+  .mail .subj { font-size: 13.5px; margin-top: 1px; }
+  .mail .snip {
+    color: var(--muted); font-size: 12.5px; margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .inbox-hint { padding: 14px 18px 16px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); }
+
+  .detail { min-width: 0; min-height: 560px; display: flex; flex-direction: column; }
+  .empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; color: var(--muted); padding: 40px 24px; gap: 8px;
+  }
+  .empty .big { font-size: 34px; }
+  .empty p { margin: 0; max-width: 42ch; }
+
+  .processing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 40px; }
+  .proc-step { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; opacity: .35; transition: opacity .2s; }
+  .proc-step.on { opacity: 1; color: var(--ink); font-weight: 600; }
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%; flex: none;
+    border: 2px solid var(--line); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  .proc-step .done-mark { color: var(--ok); font-weight: 700; width: 14px; text-align: center; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+  .result { padding: 4px 22px 22px; display: none; }
+  .result.show { display: block; }
+
+  .sec { margin-top: 18px; }
+  .sec-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip {
+    font-size: 12.5px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface-2);
+  }
+  .chip.intent { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+  .chip.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn); }
+  .chip.danger { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+  .chip.conf { color: var(--muted); }
+
+  .summary {
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px;
+  }
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 520px; }
+  th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); font-weight: 700; padding: 9px 14px; background: var(--surface-2);
+    border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td .none { color: var(--danger); font-weight: 600; font-size: 12.5px; }
+
+  .missing-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .missing-list li {
+    display: flex; gap: 9px; align-items: baseline; font-size: 13.5px;
+    background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--ink);
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .missing-list li::before { content: "!"; font-weight: 800; color: var(--warn); flex: none; }
+  .missing-list li.crit { background: var(--danger-bg); border-color: var(--danger); }
+  .missing-list li.crit::before { color: var(--danger); }
+
+  .draft { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .draft-head {
+    background: var(--surface-2); border-bottom: 1px solid var(--line);
+    padding: 9px 16px; font-size: 12.5px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .draft-head b { color: var(--ink); }
+  .draft-badge { color: var(--accent-ink); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }
+  .draft-body { padding: 14px 16px; font-size: 14px; white-space: pre-line; }
+  .ph {
+    background: var(--warn-bg); border: 1px dashed var(--warn); color: var(--warn);
+    font-weight: 700; border-radius: 5px; padding: 0 6px; font-size: 13px; white-space: nowrap;
+  }
+  .draft-note { font-size: 12.5px; color: var(--muted); padding: 0 16px 12px; }
+
+  .no-draft {
+    border: 1px solid var(--danger); background: var(--danger-bg); border-radius: 10px;
+    padding: 12px 16px; font-size: 14px;
+  }
+  .no-draft b { color: var(--danger); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; align-items: center; }
+  .btn {
+    border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 14px;
+    padding: 10px 18px; border-radius: 9px;
+  }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.ok { background: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .btn.ok { color: #1B0A0E; }
+  .btn.alt { background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); }
+  .confirmed-pill {
+    display: none; align-items: center; gap: 8px; font-weight: 700; font-size: 14px;
+    color: var(--ok); background: var(--ok-bg); border: 1px solid var(--ok);
+    border-radius: 999px; padding: 8px 16px;
+  }
+  .confirmed-pill.show { display: inline-flex; }
+
+  .toast {
+    margin-top: 12px; font-size: 13px; color: var(--muted);
+    border-left: 3px solid var(--accent); padding: 6px 12px; display: none;
+  }
+  .toast.show { display: block; }
+
+  .sheet-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .sheet { border-collapse: collapse; font-size: 12.5px; min-width: 700px; width: 100%; }
+  .sheet th { background: var(--accent-soft); color: var(--accent-ink); border-bottom: 1px solid var(--line); }
+  .sheet td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+  .status-cell { font-weight: 700; color: var(--warn); }
+  .status-cell.ok { color: var(--ok); }
+
+  .how { margin: 26px 0 10px; }
+  .how h2 { font-size: 19px; letter-spacing: -.01em; margin: 0 0 14px; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
+  .step {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; font-size: 13.5px;
+  }
+  .step .n {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft);
+    color: var(--accent-ink); font-weight: 800; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;
+  }
+  .step b { display: block; margin-bottom: 3px; }
+  .step span { color: var(--muted); }
+
+  .guarantees { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+  .g {
+    font-size: 13px; font-weight: 600; display: flex; gap: 8px; align-items: center;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px;
+  }
+  .g::before { content: "✓"; color: var(--ok); font-weight: 800; }
+
+  footer {
+    color: var(--muted); font-size: 12.5px; padding: 10px 0 34px;
+    border-top: 1px solid var(--line); margin-top: 18px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="brand-dot">🛡</span> <span class="co">FIT VAROVANJE</span>&nbsp;· AI Prodajni Asistent</div>
+    <span class="demo-chip">Demo prikaz</span>
+  </div>
+
+  <section class="hero">
+    <h1>Vsako povpraševanje na <em>prodaja@fitvarovanje.si</em>, obdelano v minutah.</h1>
+    <p class="lead">Asistent prebere vsak prejeti e-mail, prepozna, katero storitev stranka potrebuje — alarmni sistemi, požarni sistemi, video nadzor, fizično varovanje, varovanje prireditev, priklop na VNC — izlušči podatke o objektu ali dogodku in pripravi osnutek odgovora s predlogom termina ogleda. Nič se ne pošlje brez vašega komercialista.</p>
+    <div class="principle">
+      <span class="p-step">AI pripravi</span><span class="p-arrow">→</span>
+      <span class="p-step human">Človek preveri</span><span class="p-arrow">→</span>
+      <span class="p-step human">Človek pošlje</span>
+    </div>
+  </section>
+
+  <div class="app">
+    <div class="inbox">
+      <div class="pane-label">Prejeta pošta — <span class="addr">prodaja@fitvarovanje.si</span></div>
+      <div id="mailList"></div>
+      <div class="inbox-hint">Kliknite e-mail in poglejte, kaj asistent naredi iz njega. Primeri so izmišljeni, a taki, kot jih dobivate vsak dan.</div>
+    </div>
+
+    <div class="detail">
+      <div class="pane-label">Kaj pripravi asistent</div>
+
+      <div class="empty" id="empty">
+        <div class="big">👈</div>
+        <p><b>Izberite e-mail na levi.</b></p>
+        <p>Videli boste povzetek povpraševanja, podatke o objektu ali dogodku, opozorila in osnutek odgovora — vse, kar bi sicer komercialist tipkal ročno.</p>
+      </div>
+
+      <div class="processing" id="processing" style="display:none">
+        <div class="proc-step" id="ps1"><span class="ic"><span class="spinner"></span></span> Berem e-mail …</div>
+        <div class="proc-step" id="ps2"><span class="ic"><span class="spinner"></span></span> Luščim podatke o objektu in storitvi …</div>
+        <div class="proc-step" id="ps3"><span class="ic"><span class="spinner"></span></span> Pripravljam osnutek odgovora …</div>
+      </div>
+
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <section class="how">
+    <h2>Kako deluje v praksi</h2>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><b>Povpraševanje prispe</b><span>Asistent spremlja vaš obstoječi nabiralnik prodaja@fitvarovanje.si. Nič se ne seli, nič se ne spreminja.</span></div>
+      <div class="step"><span class="n">2</span><b>AI pripravi</b><span>Prepozna storitev — od alarmov do varovanja prireditev — izlušči objekt, lokacijo in želje, opozori, če kaj manjka.</span></div>
+      <div class="step"><span class="n">3</span><b>Komercialist preveri</b><span>Povzetek dobi na e-mail, osnutek odgovora že čaka v Gmailu — vpiše termin ogleda in pošlje.</span></div>
+      <div class="step"><span class="n">4</span><b>Vse zabeleženo</b><span>Vsako povpraševanje pristane v pregledni tabeli, vsak korak v revizijski sledi. Nobeno se ne izgubi.</span></div>
+    </div>
+    <div class="guarantees">
+      <span class="g">Nič se ne pošlje brez vašega komercialista</span>
+      <span class="g">Asistent nikoli sam ne obljublja cen, terminov in varnostnih rešitev</span>
+      <span class="g">Reklamacije in nujni primeri gredo takoj v ročno obravnavo</span>
+      <span class="g">VNC, intervencija in operativa ostanejo popolnoma nedotaknjeni</span>
+    </div>
+  </section>
+
+  <footer>
+    Demo prikaz, pripravljen za FIT Varovanje d.d. — simulirani podatki, vsi primeri in osebe so izmišljeni.
+    Živ sistem se priklopi na obstoječi nabiralnik v nekaj dneh. · Branko Trivić
+  </footer>
+</div>
+
+<script>
+const EMAILS = [
+  {
+    id: "m1",
+    from: "Andrej Kovač",
+    fromEmail: "andrej.kovac@gmail.com",
+    time: "08:37",
+    subj: "alarm za hišo",
+    snip: "Pozdravljeni, gradimo hišo v Domžalah, cca 150 m2, zanima nas protivlomni alarm in kakšna kamera …",
+    body: "Pozdravljeni,\ngradimo hišo v Domžalah, cca 150 m2, zanima nas protivlomni alarm in kakšna kamera zunaj.\nKoliko bi to približno stalo in kdaj bi lahko prišli pogledat?\nLp Andrej Kovač",
+    intent: "Novo povpraševanje — montaža",
+    intentClass: "intent",
+    conf: "Zanesljivost 92 %",
+    flags: [ { t: "Sprašuje po ceni", c: "warn" } ],
+    summary: "Zasebnik gradi hišo v Domžalah (~150 m²) in želi protivlomni alarm ter zunanji videonadzor. Sprašuje po okvirni ceni in terminu ogleda. Manjkata točen naslov in podatek, ali želi priklop na varnostno-nadzorni center — osnutek odgovora oboje že vpraša.",
+    items: [
+      { sys: "Alarmni sistem (protivlomni)", obj: "Stanovanjska hiša, ~150 m² (novogradnja)", loc: "Domžale", note: "faza gradnje — idealen čas za razvod" },
+      { sys: "Video nadzor", obj: "Ista hiša — zunanje kamere", loc: "Domžale", note: "število kamer ni navedeno" }
+    ],
+    missing: [
+      { text: "Točen naslov objekta ni naveden — potreben za ogled.", crit: false },
+      { text: "Ali stranka želi priklop na VNC z 24/7 posredovanjem? Osnutek vpraša.", crit: false },
+      { text: "Stranka sprašuje po ceni — cena se poda po ogledu ([CENA] izpolni komercialist).", crit: false }
+    ],
+    draft: "Pozdravljeni, g. Kovač,\n\nhvala za povpraševanje. Za novogradnjo je zdaj ravno pravi čas za načrtovanje protivlomnega sistema in videonadzora — razvod se najlažje uredi pred zaključnimi deli.\n\nZa točno ponudbo predlagamo brezplačen ogled objekta. Na voljo smo [TERMIN OGLEDA] — prosimo, sporočite še točen naslov v Domžalah.\n\nOb ogledu se pogovorimo tudi o priklopu alarma na naš varnostno-nadzorni center s 24-urnim posredovanjem intervencijske ekipe.\n\nOkvirno ceno vam pripravimo po ogledu: [CENA].\n\nLep pozdrav,",
+    sheet: { stranka: "Andrej Kovač", podjetje: "zasebnik", sistem: "alarm + video nadzor (hiša, Domžale)", manjka: "naslov, VNC da/ne", status: "Čaka pregled" }
+  },
+  {
+    id: "m2",
+    from: "Nina Zorko — TransLog",
+    fromEmail: "nina.zorko@translog.si",
+    time: "09:21",
+    subj: "Požarni sistem — novo skladišče Koper",
+    snip: "Pozdravljeni, odpiramo novo skladišče v Kopru, cca 2.000 m2. Potrebujemo sistem javljanja požara …",
+    body: "Pozdravljeni,\nodpiramo novo skladišče v Kopru, cca 2.000 m2. Potrebujemo sistem javljanja požara.\nKdaj lahko začnete z montažo in koliko stane?\nNina Zorko, TransLog d.o.o.",
+    intent: "Novo povpraševanje — montaža",
+    intentClass: "intent",
+    conf: "Zanesljivost 88 %",
+    flags: [ { t: "Večji objekt — projektna zasnova", c: "warn" }, { t: "Sprašuje po ceni in roku", c: "warn" } ],
+    summary: "TransLog odpira skladišče v Kopru (~2.000 m²) in potrebuje certificiran sistem javljanja požara. Pri objektu te velikosti sta potrebna projektna dokumentacija in požarni elaborat — osnutek odgovora to pojasni in predlaga ogled s pregledom dokumentacije. Cene in roka montaže asistent ne obljublja.",
+    items: [
+      { sys: "Požarni sistem (javljanje požara)", obj: "Skladišče, ~2.000 m² (novo)", loc: "Koper", note: "tip skladiščenega blaga ni naveden" }
+    ],
+    missing: [
+      { text: "Tip skladiščenega blaga ni naveden — vpliva na zasnovo sistema in izbiro javljalnikov.", crit: true },
+      { text: "Ali obstajata projektna dokumentacija in požarni elaborat? Osnutek vpraša.", crit: true },
+      { text: "Točen naslov objekta v Kopru.", crit: false }
+    ],
+    draft: "Pozdravljeni, ga. Zorko,\n\nhvala za povpraševanje. Za skladišče velikosti okoli 2.000 m² se sistem javljanja požara zasnuje na podlagi projektne dokumentacije in požarnega elaborata, zato predlagamo, da se najprej oglasimo pri vas na ogledu in pregledamo dokumentacijo.\n\nNa voljo smo [TERMIN OGLEDA] — prosimo, sporočite točen naslov objekta in kontaktno osebo na lokaciji.\n\nKoristno je, če nam vnaprej sporočite še, kakšno blago boste skladiščili, saj to vpliva na izbiro javljalnikov.\n\nPonudbo s ceno in terminom montaže pripravimo po ogledu: [CENA].\n\nLep pozdrav,",
+    sheet: { stranka: "Nina Zorko", podjetje: "TransLog d.o.o.", sistem: "požarni sistem (skladišče 2.000 m², Koper)", manjka: "dokumentacija, tip blaga, naslov", status: "Čaka pregled" }
+  },
+  {
+    id: "m3",
+    from: "Tadej Oblak — ŠD Vrhnika",
+    fromEmail: "tadej.oblak@sd-vrhnika.si",
+    time: "09:48",
+    subj: "varovanje veselice 22.8.",
+    snip: "Pozdravljeni, 22. avgusta organiziramo veselico s koncertom, pričakujemo okoli 800 obiskovalcev …",
+    body: "Pozdravljeni,\n22. avgusta organiziramo veselico s koncertom na športnem igrišču na Vrhniki, pričakujemo okoli 800 obiskovalcev. Prireditev traja od 18h do 2h zjutraj, točili bomo tudi pijačo.\nKoliko varnostnikov bi rabili in kakšna je cena?\nTadej Oblak, ŠD Vrhnika",
+    intent: "Novo povpraševanje — varovanje prireditve",
+    intentClass: "intent",
+    conf: "Zanesljivost 90 %",
+    flags: [ { t: "Sprašuje po ceni in št. varnostnikov", c: "warn" }, { t: "Alkohol na prireditvi — višja ocena tveganja", c: "warn" } ],
+    summary: "ŠD Vrhnika organizira veselico s koncertom (~800 obiskovalcev, 18:00–02:00, strežba alkohola) in potrebuje fizično varovanje prireditve. Število varnostnikov se določi z oceno tveganja in zahtevami zakonodaje — asistent tega ne obljublja, osnutek pa že vpraša po programu prireditve in prijavi dogodka.",
+    items: [
+      { sys: "Fizično varovanje — prireditev", obj: "Veselica s koncertom, ~800 obiskovalcev, 18:00–02:00, strežba pijače", loc: "Vrhnika, športno igrišče", note: "22. 8. 2026" }
+    ],
+    missing: [
+      { text: "Ali je prireditev že prijavljena in kakšne pogoje je določila upravna enota? Osnutek vpraša.", crit: true },
+      { text: "Program prireditve in tloris prizorišča — potrebna za oceno tveganja in izračun števila varnostnikov.", crit: false }
+    ],
+    draft: "Pozdravljeni, g. Oblak,\n\nhvala za povpraševanje. Z veseljem prevzamemo varovanje vaše veselice 22. avgusta.\n\nŠtevilo varnostnikov se pri prireditvah določi na podlagi ocene tveganja, števila obiskovalcev in pogojev iz prijave prireditve. Prosimo, pošljite nam:\n• program prireditve in tloris prizorišča,\n• kopijo prijave prireditve oz. pogoje upravne enote, če jih že imate.\n\nPredlagamo kratek sestanek ali ogled prizorišča: [TERMIN OGLEDA]. Ponudbo s številom varnostnikov in ceno pripravimo takoj zatem: [CENA].\n\nLep pozdrav,",
+    sheet: { stranka: "Tadej Oblak", podjetje: "ŠD Vrhnika", sistem: "varovanje prireditve (veselica ~800, Vrhnika, 22. 8.)", manjka: "prijava prireditve, program", status: "Čaka pregled" }
+  },
+  {
+    id: "m4",
+    from: "Matej Hribar",
+    fromEmail: "matej.hribar@optika-hribar.si",
+    time: "10:05",
+    subj: "NUJNO - vlom v trgovino",
+    snip: "Včeraj ponoči so nam vlomili v trgovino na Viču. Nujno rabimo alarm in kamere, čim prej …",
+    body: "Pozdravljeni,\nvčeraj ponoči so nam vlomili v trgovino na Viču (Tržaška 89). Policija je bila, zdaj pa nujno rabimo alarm in kamere, čim prej, ker imamo na zalogi drago blago.\nProsim, pokličite ali pišite še danes.\nMatej Hribar, Optika Hribar",
+    intent: "Novo povpraševanje — prednostno",
+    intentClass: "intent",
+    conf: "Zanesljivost 94 %",
+    flags: [ { t: "Nujno — svež vlom", c: "danger" }, { t: "Prednostna obravnava", c: "warn" } ],
+    summary: "Svež vlom v trgovino na Viču — stranka pod stresom nujno potrebuje protivlomni alarm in videonadzor. Asistent je povpraševanje označil kot prednostno in komercialista obvestil takoj. Osnutek je empatičen, predlaga hiter ogled ter omeni priklop na VNC z intervencijo — ne obljublja pa ničesar, česar komercialist ne potrdi.",
+    items: [
+      { sys: "Alarmni sistem (protivlomni)", obj: "Trgovina (optika), drago blago na zalogi", loc: "Ljubljana — Vič, Tržaška 89", note: "po vlomu — prednostno" },
+      { sys: "Video nadzor", obj: "Ista trgovina", loc: "Ljubljana — Vič", note: "obseg ni naveden" }
+    ],
+    missing: [
+      { text: "Velikost prostora in število vhodov — komercialist preveri ob klicu ali ogledu.", crit: false }
+    ],
+    draft: "Pozdravljeni, g. Hribar,\n\nžal nam je za vlom — razumemo, da želite prostor čim prej zaščititi.\n\nPredlagamo nujen ogled trgovine na Tržaški 89: na voljo smo [TERMIN OGLEDA]. Ob ogledu vam takoj svetujemo tudi začasne ukrepe do montaže in predstavimo priklop na naš varnostno-nadzorni center z intervencijsko ekipo.\n\nZa hitrejšo obravnavo nas lahko pokličete na [TELEFON] — vaše povpraševanje obravnavamo prednostno.\n\nLep pozdrav,",
+    sheet: { stranka: "Matej Hribar", podjetje: "Optika Hribar", sistem: "alarm + video nadzor (trgovina, Vič)", manjka: "velikost prostora", status: "Čaka pregled — PREDNOSTNO" }
+  },
+  {
+    id: "m5",
+    from: "Irena Božič",
+    fromEmail: "irena.bozic@kovinar-bozic.si",
+    time: "10:52",
+    subj: "PRITOŽBA - lažni alarmi in nihče ne pokliče!!",
+    snip: "Alarm se že tretjič ta mesec sproži sredi noči brez razloga. Plačujemo priklop na center, pa …",
+    body: "Alarm se že tretjič ta mesec sproži sredi noči brez razloga!\nPlačujemo priklop na varnostni center, pa nas nihče ne pokliče nazaj, ko prijavimo napako.\nČe se to ne uredi ta teden, prekinemo pogodbo.\nIrena Božič, Kovinar Božič d.o.o.",
+    intent: "Reklamacija → ročna obdelava",
+    intentClass: "danger",
+    conf: "Zanesljivost 97 %",
+    flags: [ { t: "Nezadovoljna stranka", c: "danger" }, { t: "Grožnja s prekinitvijo pogodbe", c: "danger" } ],
+    summary: "Jezna reklamacija obstoječe stranke — ponavljajoči se lažni alarmi in neodzivnost. Stranka grozi s prekinitvijo pogodbe. Asistent tu namenoma NE pripravi osnutka: občutljive zadeve in reklamacije vedno prevzame človek, takoj in osebno. E-mail je označen kot prednosten.",
+    items: null,
+    missing: [],
+    draft: null,
+    noDraftText: "Za reklamacije in nezadovoljne stranke asistent ne piše osnutkov. E-mail je označen kot prednosten in poslan odgovorni osebi v takojšnjo ročno obravnavo — pri varovanju je zaupanje vse.",
+    sheet: { stranka: "Irena Božič", podjetje: "Kovinar Božič d.o.o.", sistem: "— (reklamacija: lažni alarmi, VNC)", manjka: "—", status: "Ročna obdelava — prednostno" }
+  }
+];
+
+const mailList = document.getElementById("mailList");
+const emptyEl = document.getElementById("empty");
+const procEl = document.getElementById("processing");
+const resultEl = document.getElementById("result");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let procTimers = [];
+
+EMAILS.forEach(m => {
+  const b = document.createElement("button");
+  b.className = "mail"; b.type = "button"; b.id = "btn-" + m.id;
+  b.innerHTML =
+    '<div class="from"><span>' + m.from + '</span><time>' + m.time + '</time></div>' +
+    '<div class="subj">' + m.subj + '</div>' +
+    '<div class="snip">' + m.snip + '</div>';
+  b.addEventListener("click", () => select(m));
+  mailList.appendChild(b);
+});
+
+function select(m) {
+  document.querySelectorAll(".mail").forEach(x => x.classList.remove("active"));
+  document.getElementById("btn-" + m.id).classList.add("active");
+  emptyEl.style.display = "none";
+  resultEl.classList.remove("show");
+
+  procTimers.forEach(clearTimeout); procTimers = [];
+
+  if (reduceMotion) { render(m); return; }
+
+  procEl.style.display = "flex";
+  const steps = ["ps1","ps2","ps3"].map(id => document.getElementById(id));
+  steps.forEach(s => { s.classList.remove("on"); s.querySelector(".ic").innerHTML = '<span class="spinner"></span>'; });
+  steps[0].classList.add("on");
+  procTimers.push(setTimeout(() => {
+    steps[0].querySelector(".ic").innerHTML = '<span class="done-mark">✓</span>';
+    steps[1].classList.add("on");
+  }, 450));
+  procTimers.push(setTimeout(() => {
+    steps[1].querySelector(".ic").innerHTML = '<span class="done-mark">✓</span>';
+    steps[2].classList.add("on");
+  }, 950));
+  procTimers.push(setTimeout(() => render(m), 1500));
+}
+
+function esc(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function draftHtml(s) {
+  return esc(s).replace(/\[(TERMIN OGLEDA|CENA|TELEFON|ROK MONTAŽE)\]/g, '<span class="ph">[$1]</span>');
+}
+
+function render(m) {
+  procEl.style.display = "none";
+  let h = "";
+
+  h += '<div class="sec"><div class="chips">' +
+       '<span class="chip ' + m.intentClass + '">' + m.intent + '</span>' +
+       '<span class="chip conf">' + m.conf + '</span>' +
+       m.flags.map(f => '<span class="chip ' + f.c + '">⚠ ' + f.t + '</span>').join("") +
+       '</div></div>';
+
+  h += '<div class="sec"><div class="sec-label">Povzetek za komercialista</div>' +
+       '<div class="summary">' + esc(m.summary) + '</div></div>';
+
+  if (m.items) {
+    h += '<div class="sec"><div class="sec-label">Izluščeno povpraševanje</div><div class="tbl-wrap"><table>' +
+         '<thead><tr><th>Storitev</th><th>Objekt / dogodek</th><th>Lokacija</th><th>Opomba</th></tr></thead><tbody>';
+    m.items.forEach(it => {
+      h += '<tr><td><b>' + esc(it.sys) + '</b></td>' +
+           '<td>' + esc(it.obj) + '</td>' +
+           '<td>' + esc(it.loc) + '</td>' +
+           '<td>' + (it.note ? esc(it.note) : '—') + '</td></tr>';
+    });
+    h += '</tbody></table></div></div>';
+  }
+
+  if (m.missing.length) {
+    h += '<div class="sec"><div class="sec-label">Manjka / preverite</div><ul class="missing-list">' +
+         m.missing.map(x => '<li' + (x.crit ? ' class="crit"' : '') + '>' + esc(x.text) + '</li>').join("") +
+         '</ul></div>';
+  }
+
+  if (m.draft) {
+    h += '<div class="sec"><div class="sec-label">Osnutek odgovora</div><div class="draft">' +
+         '<div class="draft-head"><span>Za: <b>' + m.fromEmail + '</b> · Zadeva: Re: ' + esc(m.subj) + '</span>' +
+         '<span class="draft-badge">Čaka v vašem Gmailu</span></div>' +
+         '<div class="draft-body">' + draftHtml(m.draft) + '</div>' +
+         '<div class="draft-note">Označena polja (<span class="ph">[TERMIN OGLEDA]</span>, <span class="ph">[CENA]</span> …) vedno izpolni komercialist — asistent nikoli sam ne obljublja cen, terminov in varnostnih rešitev.</div>' +
+         '</div></div>';
+  } else {
+    h += '<div class="sec"><div class="sec-label">Osnutek odgovora</div>' +
+         '<div class="no-draft"><b>Osnutka ni.</b> ' + esc(m.noDraftText) + '</div></div>';
+  }
+
+  h += '<div class="actions">' +
+       '<button class="btn ok" id="btnOk" type="button">✓ Podatki so pravilni</button>' +
+       '<button class="btn alt" id="btnManual" type="button">Ročna obdelava</button>' +
+       '<span class="confirmed-pill" id="pillOk">✓ Potrjeno</span>' +
+       '</div><div class="toast" id="toast"></div>';
+
+  h += '<div class="sec"><div class="sec-label">Vrstica v vaši pregledni tabeli (Google Sheets)</div>' +
+       '<div class="sheet-wrap"><table class="sheet">' +
+       '<thead><tr><th>Prejeto</th><th>Stranka</th><th>Podjetje</th><th>Storitev / objekt</th><th>Manjka</th><th>Status</th></tr></thead>' +
+       '<tbody><tr><td>danes, ' + m.time + '</td><td>' + esc(m.sheet.stranka) + '</td><td>' + esc(m.sheet.podjetje) + '</td>' +
+       '<td>' + esc(m.sheet.sistem) + '</td><td>' + esc(m.sheet.manjka) + '</td>' +
+       '<td class="status-cell" id="sheetStatus">' + esc(m.sheet.status) + '</td></tr></tbody>' +
+       '</table></div></div>';
+
+  resultEl.innerHTML = h;
+  resultEl.classList.add("show");
+
+  const toast = document.getElementById("toast");
+  document.getElementById("btnOk").addEventListener("click", () => {
+    document.getElementById("pillOk").classList.add("show");
+    const st = document.getElementById("sheetStatus");
+    st.textContent = "Potrjeno"; st.classList.add("ok");
+    toast.textContent = "V živem sistemu: status se zapiše v tabelo in v revizijsko sled (kdo, kdaj, kaj). Osnutek odgovora ostane v Gmailu — pošlje ga komercialist.";
+    toast.classList.add("show");
+  });
+  document.getElementById("btnManual").addEventListener("click", () => {
+    const st = document.getElementById("sheetStatus");
+    st.textContent = "Ročna obdelava"; st.classList.remove("ok");
+    toast.textContent = "V živem sistemu: e-mail se označi za ročno obravnavo, odgovorna oseba dobi obvestilo, vse pa je zabeleženo v revizijski sledi.";
+    toast.classList.add("show");
+  });
+}
+</script>
+</body>
+</html>
