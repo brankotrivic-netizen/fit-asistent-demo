@@ -1,3 +1,4 @@
+// Public test endpoint used by n8n to deliver structured inbound email data.
 export default function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({
