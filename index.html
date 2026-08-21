@@ -511,7 +511,13 @@ function reviewItemFromHash() {
   if (!location.hash.startsWith(prefix)) return null;
 
   try {
-    const p = JSON.parse(decodeURIComponent(location.hash.slice(prefix.length)));
+    const raw = location.hash.slice(prefix.length);
+    let p;
+    try {
+      p = JSON.parse(decodeURIComponent(raw));
+    } catch {
+      p = JSON.parse(raw);
+    }
     const missingRaw = Array.isArray(p.missing_data) ? p.missing_data : [];
     const created = p.created_at ? new Date(p.created_at) : new Date();
     const product = p.sku || p.description
@@ -554,9 +560,6 @@ function reviewItemFromHash() {
   }
 }
 
-const liveReviewItem = reviewItemFromHash();
-if (liveReviewItem) EMAILS.unshift(liveReviewItem);
-
 const mailList = document.getElementById("mailList");
 const emptyEl = document.getElementById("empty");
 const procEl = document.getElementById("processing");
@@ -564,7 +567,7 @@ const resultEl = document.getElementById("result");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let procTimers = [];
 
-EMAILS.forEach(m => {
+function addMailButton(m, prepend = false) {
   const b = document.createElement("button");
   b.className = "mail"; b.type = "button"; b.id = "btn-" + m.id;
   b.innerHTML =
@@ -572,8 +575,23 @@ EMAILS.forEach(m => {
     '<div class="subj">' + esc(String(m.subj)) + '</div>' +
     '<div class="snip">' + esc(String(m.snip)) + '</div>';
   b.addEventListener("click", () => select(m));
-  mailList.appendChild(b);
-});
+  if (prepend) mailList.prepend(b);
+  else mailList.appendChild(b);
+}
+
+EMAILS.forEach(m => addMailButton(m));
+
+function syncLiveReviewItem() {
+  const m = reviewItemFromHash();
+  if (!m || document.getElementById("btn-" + m.id)) return;
+  EMAILS.unshift(m);
+  addMailButton(m, true);
+}
+
+syncLiveReviewItem();
+window.addEventListener("hashchange", syncLiveReviewItem);
+setTimeout(syncLiveReviewItem, 0);
+setTimeout(syncLiveReviewItem, 500);
 
 function select(m) {
   document.querySelectorAll(".mail").forEach(x => x.classList.remove("active"));
