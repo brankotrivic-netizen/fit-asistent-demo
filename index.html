@@ -506,6 +506,60 @@ const EMAILS = [
   }
 ];
 
+function reviewItemFromHash() {
+  const prefix = "#review=";
+  if (!location.hash.startsWith(prefix)) return null;
+
+  try {
+    const raw = location.hash.slice(prefix.length);
+    let p;
+    try {
+      p = JSON.parse(decodeURIComponent(raw));
+    } catch {
+      p = JSON.parse(raw);
+    }
+    const missingRaw = Array.isArray(p.missing_data) ? p.missing_data : [];
+    const created = p.created_at ? new Date(p.created_at) : new Date();
+    const product = p.sku || p.description
+      ? [{
+          sys: p.description || p.sku || "Izdelek",
+          obj: p.sku || "—",
+          loc: "—",
+          note: [p.quantity, p.unit].filter(Boolean).join(" ") || "—"
+        }]
+      : null;
+
+    return {
+      id: "live-" + String(p.id || Date.now()),
+      live: true,
+      from: "Novo testno povpraševanje",
+      fromEmail: "naslov skrit v pregledu",
+      time: created.toLocaleTimeString("sl-SI", { hour: "2-digit", minute: "2-digit" }),
+      subj: String(p.subject || "BUMA TEST"),
+      snip: String(p.summary || "AI je pripravil osnutek za človeški pregled."),
+      body: String(p.summary || ""),
+      intent: "AI osnutek — čaka potrditev",
+      intentClass: "intent",
+      conf: "Živi test iz n8n",
+      flags: [{ t: "Brez avtomatskega pošiljanja", c: "warn" }],
+      summary: String(p.summary || "AI analiza je zaključena."),
+      items: product,
+      missing: missingRaw.map((x) => ({ text: String(x), crit: false })),
+      draft: String(p.draft_reply || ""),
+      noDraftText: "Osnutek še ni pripravljen.",
+      sheet: {
+        stranka: "Testno sporočilo",
+        podjetje: "—",
+        sistem: [p.sku, p.description].filter(Boolean).join(" — ") || String(p.email_type || "povpraševanje"),
+        manjka: missingRaw.join(", ") || "—",
+        status: String(p.status || "za_potrditev")
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+
 const mailList = document.getElementById("mailList");
 const emptyEl = document.getElementById("empty");
 const procEl = document.getElementById("processing");
@@ -513,16 +567,31 @@ const resultEl = document.getElementById("result");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let procTimers = [];
 
-EMAILS.forEach(m => {
+function addMailButton(m, prepend = false) {
   const b = document.createElement("button");
   b.className = "mail"; b.type = "button"; b.id = "btn-" + m.id;
   b.innerHTML =
-    '<div class="from"><span>' + m.from + '</span><time>' + m.time + '</time></div>' +
-    '<div class="subj">' + m.subj + '</div>' +
-    '<div class="snip">' + m.snip + '</div>';
+    '<div class="from"><span>' + esc(String(m.from)) + '</span><time>' + esc(String(m.time)) + '</time></div>' +
+    '<div class="subj">' + esc(String(m.subj)) + '</div>' +
+    '<div class="snip">' + esc(String(m.snip)) + '</div>';
   b.addEventListener("click", () => select(m));
-  mailList.appendChild(b);
-});
+  if (prepend) mailList.prepend(b);
+  else mailList.appendChild(b);
+}
+
+EMAILS.forEach(m => addMailButton(m));
+
+function syncLiveReviewItem() {
+  const m = reviewItemFromHash();
+  if (!m || document.getElementById("btn-" + m.id)) return;
+  EMAILS.unshift(m);
+  addMailButton(m, true);
+}
+
+syncLiveReviewItem();
+window.addEventListener("hashchange", syncLiveReviewItem);
+setTimeout(syncLiveReviewItem, 0);
+setTimeout(syncLiveReviewItem, 500);
 
 function select(m) {
   document.querySelectorAll(".mail").forEach(x => x.classList.remove("active"));
@@ -612,7 +681,7 @@ function render(m) {
   }
 
   h += '<div class="actions">' +
-       '<button class="btn ok" id="btnOk" type="button">✓ Podatki so pravilni</button>' +
+       '<button class="btn ok" id="btnOk" type="button">' + (m.live ? '✓ Potrdi osnutek (brez pošiljanja)' : '✓ Podatki so pravilni') + '</button>' +
        '<button class="btn alt" id="btnManual" type="button">Ročna obdelava</button>' +
        '<span class="confirmed-pill" id="pillOk">✓ Potrjeno</span>' +
        '</div><div class="toast" id="toast"></div>';
@@ -633,7 +702,9 @@ function render(m) {
     document.getElementById("pillOk").classList.add("show");
     const st = document.getElementById("sheetStatus");
     st.textContent = "Potrjeno"; st.classList.add("ok");
-    toast.textContent = "V živem sistemu: status se zapiše v tabelo in v revizijsko sled (kdo, kdaj, kaj). Osnutek odgovora ostane v Gmailu — pošlje ga komercialist.";
+    toast.textContent = m.live
+      ? "Osnutek je potrjen v tem varnem pregledu. E-pošta ni bila poslana; pošiljanje bo dodano šele v ločeni, nadzorovani fazi."
+      : "V živem sistemu: status se zapiše v tabelo in v revizijsko sled (kdo, kdaj, kaj). Osnutek odgovora ostane v Gmailu — pošlje ga komercialist.";
     toast.classList.add("show");
   });
   document.getElementById("btnManual").addEventListener("click", () => {
