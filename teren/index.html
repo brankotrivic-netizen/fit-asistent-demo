@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIT VAROVANJE — Generator Predracunov v4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{--bg:#f5f3ef;--white:#fff;--dark:#1a1a2e;--accent:#c8102e;--accent-light:rgba(200,16,46,0.08);--border:#e0ddd8;--muted:#8a8680;--text:#2d2d2d;--shadow:0 2px 20px rgba(0,0,0,0.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;min-height:100vh}
+.page{max-width:980px;margin:0 auto;padding:36px 20px 80px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:36px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo{width:42px;height:42px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:"Playfair Display",serif;font-size:18px;font-weight:700;color:#fff}
+.brand-text h1{font-family:"Playfair Display",serif;font-size:19px;font-weight:700;color:var(--dark);line-height:1}
+.brand-text p{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:1px;text-transform:uppercase}
+.section{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:14px;box-shadow:var(--shadow)}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.section-num{width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
+.section-title{font-family:"Playfair Display",serif;font-size:16px;font-weight:600;color:var(--dark)}
+.section-badge{margin-left:auto;font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+.badge-protivlomni{background:#fee2e2;color:#c8102e}.badge-pozarni{background:#fef3c7;color:#d97706}
+.badge-video{background:#dbeafe;color:#1d4ed8}.badge-kombinirani{background:#ede9fe;color:#7c3aed}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:4px}
+label{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+input[type=text],input[type=email],input[type=number],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;font-family:"DM Sans",sans-serif;font-size:13px;color:var(--text);background:var(--bg);outline:none;appearance:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff}
+textarea{resize:vertical;min-height:56px}
+/* Tip stranke toggle */
+.stranka-toggle{display:flex;gap:8px;margin-bottom:14px}
+.toggle-btn{flex:1;padding:10px;border:2px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-family:"DM Sans",sans-serif;font-size:13px;font-weight:600;transition:all .2s}
+.toggle-btn.active-fizicna{border-color:#c8102e;background:#fee2e2;color:#c8102e}
+.toggle-btn.active-pravna{border-color:#1d4ed8;background:#dbeafe;color:#1d4ed8}
+/* Tip sistema */
+.tip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:16px}
+.tip-btn{padding:11px 7px;border:2px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;text-align:center;transition:all .2s;font-family:"DM Sans",sans-serif}
+.tip-btn:hover{border-color:var(--accent);background:var(--accent-light)}
+.tip-btn.active-protivlomni{border-color:#c8102e;background:#fee2e2}
+.tip-btn.active-pozarni{border-color:#d97706;background:#fef3c7}
+.tip-btn.active-video{border-color:#1d4ed8;background:#dbeafe}
+.tip-btn.active-kombinirani{border-color:#7c3aed;background:#ede9fe}
+.tip-icon{font-size:20px;margin-bottom:4px}
+.tip-label{font-size:10px;font-weight:600;color:var(--dark)}
+.tip-sub{font-size:9px;color:var(--muted);margin-top:1px}
+/* AI box */
+.ai-box{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:9px;padding:16px 20px;margin-bottom:14px;display:none}
+.ai-box.visible{display:block}
+.ai-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ai-dot{width:6px;height:6px;background:#22d3ee;border-radius:50%;animation:blink 1.5s infinite}
+.ai-title{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#22d3ee}
+.ai-tekst{font-size:12px;color:rgba(255,255,255,.8);line-height:1.6;margin-bottom:10px}
+.ai-pills{display:flex;flex-wrap:wrap;gap:4px}
+.ai-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:3px 8px;font-size:10px;color:rgba(255,255,255,.65)}
+.btn-ai{margin-top:10px;padding:7px 14px;background:#22d3ee;color:#0f172a;border:none;border-radius:5px;font-family:"DM Sans",sans-serif;font-size:11px;font-weight:700;cursor:pointer}
+/* AI opis generator */
+.ai-opisbox{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
+.ai-opisbox-title{font-size:11px;font-weight:700;color:var(--dark);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-opisbox textarea{margin-bottom:8px}
+.btn-genai{padding:8px 18px;background:linear-gradient(135deg,#7c3aed,#c8102e);color:#fff;border:none;border-radius:6px;font-family:"DM Sans",sans-serif;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-genai:hover{opacity:.9}
+.btn-genai.loading{opacity:.6;pointer-events:none}
+/* Instalacija opcije */
+.inst-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.inst-btn{padding:10px 7px;border:2px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;text-align:center;transition:all .2s;font-family:"DM Sans",sans-serif}
+.inst-btn:hover{border-color:var(--accent);background:var(--accent-light)}
+.inst-btn.active{border-color:#c8102e;background:#fee2e2}
+.inst-icon{font-size:18px;margin-bottom:4px}
+.inst-label{font-size:10px;font-weight:600;color:var(--dark)}
+/* Tabela */
+.tab-header{display:grid;grid-template-columns:28px 1fr 95px 70px 90px 28px;gap:5px;padding:6px 9px;background:var(--dark);border-radius:7px 7px 0 0;font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.tab-body{border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;overflow:hidden}
+.artikel-row{display:grid;grid-template-columns:28px 1fr 95px 70px 90px 28px;gap:5px;padding:6px 9px;border-bottom:1px solid var(--border);align-items:center}
+.artikel-row:last-child{border-bottom:none}
+.artikel-row:hover{background:#fafaf9}
+.row-num{font-size:10px;color:var(--muted);text-align:center;font-weight:600}
+.artikel-row select,.artikel-row input[type=number]{padding:5px 7px;font-size:11px;border-radius:5px}
+.cena-display{font-size:12px;font-weight:700;color:var(--dark);text-align:right}
+.btn-rm{width:24px;height:24px;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);transition:all .2s;flex-shrink:0}
+.btn-rm:hover{background:#fee2e2;border-color:var(--accent);color:var(--accent)}
+.empty-state{padding:24px;text-align:center;color:var(--muted);font-size:12px}
+.btn-add{margin-top:8px;padding:8px 14px;border:1px dashed var(--border);border-radius:7px;background:transparent;cursor:pointer;font-family:"DM Sans",sans-serif;font-size:11px;color:var(--muted);width:100%;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+/* Kabliranje */
+.kab-row{display:grid;grid-template-columns:1fr 120px 120px 100px;gap:8px;align-items:end;margin-bottom:8px;padding:10px;background:var(--bg);border-radius:7px;border:1px solid var(--border)}
+/* Storitve */
+.storitve-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.storitev-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px}
+.storitev-title{font-size:10px;font-weight:700;color:var(--dark);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase}
+.storitev-row{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.storitev-label{font-size:11px;color:var(--muted);min-width:85px}
+.storitev-input{flex:1}
+.storitev-val{font-size:11px;font-weight:600;color:var(--accent);min-width:65px;text-align:right}
+.auto-row{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(200,16,46,0.05);border:1px solid rgba(200,16,46,0.15);border-radius:6px;margin-bottom:5px}
+.auto-label{font-size:11px;color:var(--muted)}
+.auto-val{font-size:12px;font-weight:700;color:var(--accent)}
+/* Skupaj */
+.skupaj-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.s-row{display:flex;align-items:center;gap:18px;font-size:12px}
+.s-label{color:var(--muted);min-width:190px;text-align:right}
+.s-val{font-weight:600;min-width:95px;text-align:right}
+.s-row.total{font-size:18px;padding-top:7px;border-top:2px solid var(--dark);margin-top:4px}
+.s-row.total .s-label{color:var(--dark);font-weight:700}
+.s-row.total .s-val{color:var(--accent);font-family:"Playfair Display",serif}
+.popust-inline{display:flex;align-items:center;gap:7px;justify-content:flex-end;margin-top:8px;font-size:11px;color:var(--muted)}
+.popust-inline input{width:55px;text-align:center;padding:6px}
+.btn-generate{width:100%;padding:14px 24px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-family:"Playfair Display",serif;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:20px}
+.btn-generate:hover{background:#a50d25;transform:translateY(-1px)}
+.btn-generate.loading{background:var(--muted);pointer-events:none}
+.error-box{display:none;margin-top:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:10px 14px;font-size:11px;color:#dc2626}
+.error-box.visible{display:block}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+/* PDF OVERLAY */
+#pdfOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;overflow-y:auto}
+#pdfOverlay.visible{display:block}
+#pdfWrapper{max-width:880px;margin:16px auto;padding:0 10px 40px}
+.pdf-toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#1a1a2e;border-radius:8px 8px 0 0}
+.pdf-toolbar-title{color:#fff;font-family:"Playfair Display",serif;font-size:15px;font-weight:600}
+.pdf-toolbar-btns{display:flex;gap:8px}
+.btn-print{padding:8px 20px;background:#c8102e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700}
+.btn-close-pdf{padding:8px 14px;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px}
+#pdfContent{background:#fff;border-radius:0 0 8px 8px;padding:32px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media print{
+  .page,.error-box{display:none!important}
+  #pdfOverlay{display:block!important;position:static!important;background:none!important;overflow:visible!important}
+  #pdfWrapper{margin:0!important;padding:0!important;max-width:100%!important}
+  .pdf-toolbar{display:none!important}
+  #pdfContent{border-radius:0!important;padding:16px!important}
+}
+/* ==========================================
+   MOBILNI PRIKAZ — kompletna optimizacija
+   ========================================== */
+@media(max-width:768px){
+  /* Osnova */
+  .page{padding:16px 12px 60px}
+  .header{flex-direction:column;gap:10px;margin-bottom:20px;padding-bottom:16px}
+  .brand-text h1{font-size:16px}
+  .section{padding:16px 14px;margin-bottom:10px}
+  .section-title{font-size:14px}
+
+  /* Tip stranke toggle — cela sirina */
+  .stranka-toggle{flex-direction:column;gap:6px}
+  .toggle-btn{padding:13px;font-size:14px;min-height:48px}
+
+  /* Tip sistema — 2x2 grid */
+  .tip-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+  .tip-btn{padding:14px 8px;min-height:70px}
+  .tip-icon{font-size:24px;margin-bottom:6px}
+  .tip-label{font-size:11px}
+  .tip-sub{font-size:10px}
+
+  /* Forma polja — 1 stolpec */
+  .field-grid{grid-template-columns:1fr;gap:10px}
+  .field-full{grid-column:1}
+
+  /* Vsa input polja vecja za dotik */
+  input[type=text],input[type=email],input[type=number],select,textarea{
+    padding:12px 13px;
+    font-size:16px; /* preprechi zoom na iOS */
+    min-height:48px;
+    border-radius:8px;
+  }
+  textarea{min-height:70px}
+  label{font-size:11px;margin-bottom:4px}
+
+  /* Instalacija — 1 stolpec */
+  .inst-grid{grid-template-columns:1fr;gap:7px}
+  .inst-btn{padding:13px;display:flex;align-items:center;gap:12px;text-align:left}
+  .inst-icon{font-size:22px;margin-bottom:0;flex-shrink:0}
+  .inst-label{font-size:13px;font-weight:600}
+
+  /* AI opisbox */
+  .ai-opisbox{padding:14px}
+  .ai-opisbox textarea{font-size:16px}
+  .btn-genai{width:100%;padding:13px;font-size:14px;justify-content:center}
+
+  /* AI box predlog */
+  .ai-box{padding:14px 16px}
+  .ai-tekst{font-size:13px}
+  .ai-pill{font-size:11px;padding:4px 10px}
+  .btn-ai{width:100%;padding:12px;font-size:13px;text-align:center;margin-top:10px}
+
+  /* Tabela artiklov — skrijemo header, prikaz v bloku */
+  .tab-header{display:none}
+  .artikel-row{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:12px;
+    border-bottom:1px solid var(--border);
+  }
+  /* Select artikel — full width */
+  .artikel-row select{
+    width:100%;
+    font-size:15px;
+    padding:12px 13px;
+    min-height:48px;
+    border-radius:8px;
+    order:1;
+  }
+  /* Skrij ceno/enoto na mobilnem (vidna samo na desktop) */
+  .artikel-row input[readonly]{
+    display:none;
+  }
+  /* Kolicina in vrednost v eni vrstici */
+  .artikel-row input[type=number]:not([readonly]){
+    width:100%;
+    font-size:16px;
+    padding:11px 13px;
+    min-height:48px;
+    border-radius:8px;
+    order:2;
+  }
+  .artikel-row .cena-display{
+    font-size:16px;
+    font-weight:700;
+    color:var(--accent);
+    text-align:left;
+    order:3;
+    padding:4px 0;
+  }
+  .row-num{display:none}
+  /* Gumb odstrani — full width rdeč */
+  .btn-rm{
+    width:100%;
+    height:44px;
+    border-radius:8px;
+    font-size:14px;
+    order:4;
+    background:#fff5f5;
+    border-color:#fecaca;
+    color:#dc2626;
+  }
+  .btn-add{
+    padding:14px;
+    font-size:15px;
+    min-height:50px;
+    margin-top:10px;
+    border-radius:8px;
+  }
+
+  /* Kabliranje */
+  .kab-row{
+    grid-template-columns:1fr;
+    gap:8px;
+    padding:12px;
+  }
+
+  /* Storitve — 1 stolpec */
+  .storitve-grid{grid-template-columns:1fr;gap:10px}
+  .storitev-card{padding:14px}
+  .storitev-row{flex-direction:column;align-items:flex-start;gap:5px;margin-bottom:10px}
+  .storitev-label{min-width:auto;font-size:12px}
+  .storitev-input{width:100%;font-size:16px;padding:11px 12px;min-height:46px}
+  .storitev-val{font-size:13px;font-weight:700;margin-top:3px}
+  .storitev-title{font-size:12px;margin-bottom:12px}
+  .auto-row{padding:10px 13px}
+  .auto-label{font-size:12px}
+  .auto-val{font-size:13px}
+
+  /* Rekapitulacija */
+  .skupaj-wrap{align-items:stretch}
+  .s-row{justify-content:space-between;font-size:13px;padding:4px 0}
+  .s-label{min-width:auto;text-align:left;color:var(--muted)}
+  .s-val{min-width:auto;text-align:right}
+  .s-row.total{font-size:16px}
+  .popust-inline{justify-content:flex-start;gap:10px;font-size:13px}
+  .popust-inline input{width:65px;font-size:16px;padding:9px;min-height:44px}
+
+  /* Gumb generiraj */
+  .btn-generate{
+    padding:16px 20px;
+    font-size:17px;
+    min-height:56px;
+    border-radius:10px;
+    margin-top:16px;
+  }
+
+  /* PDF toolbar na mobilnem */
+  .pdf-toolbar{
+    flex-direction:column;
+    gap:8px;
+    align-items:stretch;
+    border-radius:0;
+    padding:12px;
+  }
+  .pdf-toolbar-btns{justify-content:center}
+  .btn-print,.btn-close-pdf{
+    padding:11px 16px;
+    font-size:14px;
+    min-height:46px;
+  }
+  #pdfContent{padding:16px 12px}
+  #pdfWrapper{margin:0;padding:0}
+
+  /* Rekapitulacija kartice */
+  [id="rekMaterial"],[id="rekKabliranje"],[id="rekStoritve"],[id="rekPotovanje"]{
+    font-size:12px;
+  }
+}
+</style>
+<script src="/gate.js"></script><script src="/intro.js" defer></script></head>
+<body>
+
+<div id="pdfOverlay">
+  <div id="pdfWrapper">
+    <div class="pdf-toolbar">
+      <div class="pdf-toolbar-title" id="pdfTitle">Predracun</div>
+      <div class="pdf-toolbar-btns">
+        <button class="btn-print" onclick="window.print()">Natisni / Shrani PDF</button>
+        <button class="btn-close-pdf" onclick="zapriPDF()">Zapri</button>
+      </div>
+    </div>
+    <div id="pdfContent"></div>
+  </div>
+</div>
+
+<div class="page">
+<div class="header">
+  <div class="brand">
+    <div class="brand-logo">FV</div>
+    <div class="brand-text"><h1>FIT VAROVANJE, d.d.</h1><p>Generator Predracunov v4.0</p></div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-family:Playfair Display,serif;font-size:13px;color:var(--muted)" id="docNumber">PR-2026-001</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:2px" id="docDate"></div>
+  </div>
+</div>
+
+<!-- SEKCIJA 1: STRANKA -->
+<div class="section">
+  <div class="section-header"><div class="section-num">1</div><div class="section-title">Podatki stranke</div></div>
+  <div style="margin-bottom:12px">
+    <label style="display:block;margin-bottom:7px">Tip stranke</label>
+    <div class="stranka-toggle">
+      <div class="toggle-btn active-fizicna" id="tip-fizicna" onclick="izberStranko('fizicna')">Fizicna oseba (DDV 22%)</div>
+      <div class="toggle-btn" id="tip-pravna" onclick="izberStranko('pravna')">Pravna oseba (Obrnjena DDV)</div>
+    </div>
+  </div>
+  <div class="field-grid">
+    <div class="field field-full"><label>Naziv / Ime in priimek *</label><input type="text" id="stranka" placeholder="npr. Koprivnik Aleksandra ali ABC Gradnje d.o.o."></div>
+    <div class="field field-full"><label>Naslov</label><input type="text" id="naslov" placeholder="npr. Pesnica pri Mariboru 70m, SI-2211"></div>
+    <div class="field"><label>ID za DDV (pravna oseba)</label><input type="text" id="ddvStevilka" placeholder="npr. SI80184359"></div>
+    <div class="field"><label>Email stranke</label><input type="email" id="email" placeholder="email@stranka.si"></div>
+    <div class="field"><label>Kontaktna oseba</label><input type="text" id="kontakt" placeholder="Ime in priimek"></div>
+    <div class="field"><label>Veljavnost ponudbe</label><select id="veljavnost"><option value="8">8 dni</option><option value="15">15 dni</option><option value="30" selected>30 dni</option><option value="60">60 dni</option></select></div>
+  </div>
+</div>
+
+<!-- SEKCIJA 2: OBJEKT -->
+<div class="section">
+  <div class="section-header"><div class="section-num">2</div><div class="section-title">Objekt in tip sistema</div></div>
+  <div style="margin-bottom:14px">
+    <label style="display:block;margin-bottom:8px">Tip varovalnega sistema *</label>
+    <div class="tip-grid">
+      <div class="tip-btn active-protivlomni" id="tip-protivlomni" onclick="izberTip('protivlomni')"><div class="tip-icon">&#128308;</div><div class="tip-label">Protivlomni</div><div class="tip-sub">AJAX, Paradox</div></div>
+      <div class="tip-btn" id="tip-pozarni" onclick="izberTip('pozarni')"><div class="tip-icon">&#127998;</div><div class="tip-label">Pozarni</div><div class="tip-sub">INIM, Previdia</div></div>
+      <div class="tip-btn" id="tip-video" onclick="izberTip('video')"><div class="tip-icon">&#128249;</div><div class="tip-label">Video nadzor</div><div class="tip-sub">NVR, kamere</div></div>
+      <div class="tip-btn" id="tip-kombinirani" onclick="izberTip('kombinirani')"><div class="tip-icon">&#128309;</div><div class="tip-label">Kombinirani</div><div class="tip-sub">Vse skupaj</div></div>
+    </div>
+  </div>
+  <div class="field-grid">
+    <div class="field field-full"><label>Naziv objekta *</label><input type="text" id="objekt" placeholder="npr. Stanovanjska hisa - Pesnica pri Mariboru 70m"></div>
+    <div class="field"><label>Povrsina (m2)</label><input type="number" id="povrsina" placeholder="150" min="0" onchange="posodobiAI()"></div>
+    <div class="field"><label>Stevilo prostorov ki se varujejo</label><input type="number" id="prostori" placeholder="5" min="1" onchange="posodobiAI()"></div>
+    <div class="field"><label>Stevilo potencialnih vhodov</label><input type="number" id="vhodi" placeholder="3" min="1" onchange="posodobiAI()"></div>
+    <div class="field"><label>Tip objekta</label><select id="tipObjekta" onchange="posodobiAI()"><option value="hisa">Stanovanjska hisa</option><option value="stanovanje">Stanovanje</option><option value="pisarna">Pisarna / Poslovni prostor</option><option value="skladisce">Skladisce / Industrijski objekt</option><option value="trgovina">Trgovina</option><option value="drugo">Drugo</option></select></div>
+    <div class="field"><label>Sifra tehnika</label><input type="text" id="sifraTehnika" placeholder="npr. TH-042"></div>
+  </div>
+  <!-- Instalacija -->
+  <div style="margin-top:14px">
+    <label style="display:block;margin-bottom:8px">Tip instalacije</label>
+    <div class="inst-grid">
+      <div class="inst-btn active" id="inst-predprip" onclick="izberInst('predprip')"><div class="inst-icon">&#9889;</div><div class="inst-label">Predpripravljena instalacija</div></div>
+      <div class="inst-btn" id="inst-kabliranje" onclick="izberInst('kabliranje')"><div class="inst-icon">&#128296;</div><div class="inst-label">Vkljucuje kabliranje</div></div>
+      <div class="inst-btn" id="inst-brezz" onclick="izberInst('brezz')"><div class="inst-icon">&#128246;</div><div class="inst-label">Brezžicni sistem</div></div>
+    </div>
+    <textarea id="opomba" placeholder="Dodatna opomba o objektu ali posebnih pogojih..." style="margin-top:6px"></textarea>
+  </div>
+</div>
+
+<!-- AI OPIS GENERATOR -->
+<div class="section">
+  <div class="section-header"><div class="section-num">3</div><div class="section-title">AI Generator Konfiguracije</div></div>
+  <div class="ai-opisbox">
+    <div class="ai-opisbox-title">&#129504; Opisi objekt in AI bo predlagal optimalno konfiguracijo</div>
+    <textarea id="aiOpis" placeholder="npr: Stanovanjska hisa 150m2, 2 nadstropji, klet in garaža, 3 vhodna vrata, 8 oken v pritlicju, stranka hoce brezžicni sistem, ima psa 15kg..." rows="3"></textarea>
+    <button class="btn-genai" id="btnGenAI" onclick="kliciAIGenerator()">
+      <span id="genaiTxt">&#129504; Generiraj konfiguracijo z AI</span>
+    </button>
+  </div>
+  <div class="ai-box" id="aiBox">
+    <div class="ai-header"><div class="ai-dot"></div><div class="ai-title">AI Predlog</div></div>
+    <div class="ai-tekst" id="aiTekst"></div>
+    <div class="ai-pills" id="aiPills"></div>
+    <button class="btn-ai" onclick="dodajAIPredlog()">Dodaj predlagane artikle</button>
+  </div>
+</div>
+
+<!-- SEKCIJA 4: MATERIAL -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">4</div><div class="section-title">Material in oprema</div>
+    <span class="section-badge badge-protivlomni" id="sistemBadge">Protivlomni sistem</span>
+  </div>
+  <div class="tab-header"><span>#</span><span>Artikel</span><span style="text-align:right">Cena/enoto</span><span style="text-align:center">Kol.</span><span style="text-align:right">Vrednost</span><span></span></div>
+  <div class="tab-body" id="tabBody"><div class="empty-state">Dodajte artikle ali uporabite AI generator</div></div>
+  <button class="btn-add" onclick="dodajPrazno()">+ Dodaj artikel</button>
+
+  <!-- KABLIRANJE -->
+  <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:700;color:var(--dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Kabliranje (rocni vnos)</div>
+    <div id="kabliranjeRows"></div>
+    <button class="btn-add" onclick="dodajKabliranje()" style="margin-top:6px">+ Dodaj kabel</button>
+  </div>
+</div>
+
+<!-- SEKCIJA 5: STORITVE -->
+<div class="section">
+  <div class="section-header"><div class="section-num">5</div><div class="section-title">Storitve, delo in potovanje</div></div>
+  <div class="storitve-grid">
+    <div class="storitev-card">
+      <div class="storitev-title">Delo tehnika</div>
+      <div class="storitev-row"><span class="storitev-label">Tip</span>
+        <select class="storitev-input" id="deloTip" onchange="posodobiStoritve()">
+          <option value="pausal">Pausal</option><option value="urno">Urna postavka</option>
+        </select>
+      </div>
+      <div id="deloPassualDiv">
+        <div class="storitev-row"><span class="storitev-label">Montaza</span>
+          <select class="storitev-input" id="deloPausal" onchange="posodobiStoritve()">
+            <option value="0">Ni montaze</option>
+            <option value="355">Montaza zicna (355 EUR)</option>
+            <option value="420">Montaza brezžicna (420 EUR)</option>
+            <option value="285">Montaza video (285 EUR)</option>
+            <option value="3980">Montaza pozarni (3.980 EUR)</option>
+            <option value="705">Montaza kombinirani (705 EUR)</option>
+          </select>
+        </div>
+        <div class="storitev-row"><span class="storitev-label">Storitev</span>
+          <select class="storitev-input" id="programiranje" onchange="posodobiStoritve()">
+            <option value="0">Ni</option>
+            <option value="76.25">Programiranje zicni (76,25 EUR)</option>
+            <option value="95">Programiranje + pricuitev (95 EUR)</option>
+            <option value="78">Programiranje video (78 EUR)</option>
+            <option value="365">Pregled s podsistemi (365 EUR)</option>
+            <option value="950">PID dokumentacija (950 EUR)</option>
+            <option value="750">Potrdilo institucije (750 EUR)</option>
+          </select>
+        </div>
+      </div>
+      <div id="deloUrnoDiv" style="display:none">
+        <div class="storitev-row"><span class="storitev-label">EUR/uro</span><input type="number" class="storitev-input" id="deloUrnaPostavka" value="45" min="0" onchange="posodobiStoritve()"></div>
+        <div class="storitev-row"><span class="storitev-label">Stevilo ur</span><input type="number" class="storitev-input" id="deloUre" value="0" min="0" step="0.5" onchange="posodobiStoritve()"></div>
+      </div>
+      <div class="auto-row" style="margin-top:7px"><span class="auto-label">Skupaj delo:</span><span class="auto-val" id="deloSkupaj">0,00 EUR</span></div>
+    </div>
+    <div class="storitev-card">
+      <div class="storitev-title">Potovanje</div>
+      <div class="storitev-row"><span class="storitev-label">Cas na poti (KPL)</span><input type="number" class="storitev-input" id="potKpl" value="0" min="0" step="0.5" onchange="posodobiStoritve()"><span class="storitev-val" id="potKplVal">0,00</span></div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:6px;padding-left:92px">34,50 EUR/KPL</div>
+      <div class="storitev-row"><span class="storitev-label">Razdalja (km)</span><input type="number" class="storitev-input" id="potKm" value="0" min="0" onchange="posodobiStoritve()"><span class="storitev-val" id="potKmVal">0,00</span></div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:6px;padding-left:92px">0,50 EUR/km</div>
+      <div class="auto-row"><span class="auto-label">Skupaj potovanje:</span><span class="auto-val" id="potSkupaj">0,00 EUR</span></div>
+    </div>
+  </div>
+  <div class="auto-row">
+    <div><span class="auto-label">Drobni specificni material (3% od materiala)</span><div style="font-size:9px;color:var(--muted);margin-top:1px">Avtomatski izracun</div></div>
+    <span class="auto-val" id="drobniVal">0,00 EUR</span>
+  </div>
+</div>
+
+<!-- SEKCIJA 6: SKUPAJ -->
+<div class="section">
+  <div class="section-header"><div class="section-num">6</div><div class="section-title">Rekapitulacija</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Material</div><div style="font-size:13px;font-weight:700" id="rekMaterial">0,00</div></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Kabliranje</div><div style="font-size:13px;font-weight:700" id="rekKabliranje">0,00</div></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Storitve</div><div style="font-size:13px;font-weight:700" id="rekStoritve">0,00</div></div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Potovanje</div><div style="font-size:13px;font-weight:700" id="rekPotovanje">0,00</div></div>
+  </div>
+  <div class="popust-inline"><span>Popust:</span><input type="number" id="popust" value="0" min="0" max="100" step="1" onchange="izracunaj()"><span>%</span></div>
+  <div class="skupaj-wrap">
+    <div class="s-row"><span class="s-label">Material:</span><span class="s-val" id="sMaterial">0,00 EUR</span></div>
+    <div class="s-row"><span class="s-label">Kabliranje:</span><span class="s-val" id="sKabliranje">0,00 EUR</span></div>
+    <div class="s-row"><span class="s-label">Drobni material (3%):</span><span class="s-val" id="sDrobni">0,00 EUR</span></div>
+    <div class="s-row"><span class="s-label">Storitve in delo:</span><span class="s-val" id="sStoritve">0,00 EUR</span></div>
+    <div class="s-row"><span class="s-label">Potovanje:</span><span class="s-val" id="sPotovanje">0,00 EUR</span></div>
+    <div class="s-row"><span class="s-label">Skupaj brez DDV:</span><span class="s-val" id="sBrezDDV">0,00 EUR</span></div>
+    <div class="s-row" id="popustRow"><span class="s-label">Popust:</span><span class="s-val" id="sPopust">0,00 EUR</span></div>
+    <div class="s-row" id="ddvRow"><span class="s-label" id="ddvLabel">DDV (22%):</span><span class="s-val" id="sDDV">0,00 EUR</span></div>
+    <div class="s-row total"><span class="s-label">SKUPAJ Z DDV:</span><span class="s-val" id="sSkupaj">0,00 EUR</span></div>
+  </div>
+</div>
+
+<button class="btn-generate" id="btnGenerate" onclick="generiraj()">
+  <span id="btnText">Generiraj predracun</span>
+  <span id="btnIcon" style="font-size:17px">&#8594;</span>
+</button>
+<div class="error-box" id="errorBox"></div>
+<div style="text-align:center;font-size:10px;color:var(--muted);margin-top:24px">FIT VAROVANJE d.d. | BUMA Automation Generator v4.0</div>
+</div>
+
+<script>
+var CENIK={
+  protivlomni:[
+    {koda:"ALM-C-HIB",naziv:"Alarmna centrala hibridna 8-32 con",opis:"Alarmna centrala 8-32 con, 2 particiji, možnost žicne ali brezžicne razširitve s pomocjo RTX3, dvo-smerna komunikacija (868), brez tipkovnice in ohišja.",cena:138,enota:"KOS"},
+    {koda:"HUB2",naziv:"Centralna enota HUB2 brezžicni sistem",opis:"Centralna enota (HUB) brezžicnega protivlomnega sistema z integriranim LAN in Dual-SIM GSM/GPRS komunikatorjem, omogoca dodajanje in delovanje do 100 brezžicnih elementov, 9 skupin (particij) max 50 uporabnikov, 50 kod. Vgrajena back-up baterija.",cena:292,enota:"KOS"},
+    {koda:"TIPK-LED",naziv:"Tipkovnica LED Paradox za SP in MG centrale",opis:"LED prikaz za alarmne centrale SP, do 10 con in 2 particije, vhod za eno žicno cono, osvetljene tipke.",cena:59,enota:"KOS"},
+    {koda:"TIPK-BW",naziv:"Tipkovnica brezžicna touchsense",opis:"Brezžicna touchsense tipkovnica (obcutljiva na dotik), omogoca vklop, delni vklop, izklop sistema in javljanje panik alarma. LED signalizacija. Bele barve.",cena:120,enota:"KOS"},
+    {koda:"OHI-PAR",naziv:"Ohišje za centrale Paradox KPL",opis:"Ohišje za centrale Paradox 255x255x88, kpl s transformatorjem 40VA in sabotažnim stikalom.",cena:66,enota:"KPL"},
+    {koda:"PIR-ZIC",naziv:"Senzor gibanja dvojni IR žicni",opis:"Digitalni žicni detektor gibanja z dvojnim PIR elementom.",cena:27,enota:"KOS"},
+    {koda:"PIR-BW",naziv:"Brezžicni PIR detektor gibanja",opis:"Brezžicni PIR detektor gibanja, domet do 12m pri 85°, neobcutljiv na hišne ljubllencke do 20 kg in višine do 50 cm. Bele barve.",cena:75,enota:"KOS"},
+    {koda:"SIR-ZUN",naziv:"Samonapajalna zunanja sirena",opis:"Samonapajlna sirena z redco LED bliskavico za zunanjo vgradnjo. Dva tamper stikala za zašcito od odtujitve/odpiranja. Napajanje 13,8 Vdc.",cena:58,enota:"KOS"},
+    {koda:"SIR-NOT-BW",naziv:"Brezžicna notranja sirena",opis:"Brezžicna notranja sirena nastavljive glasnosti od 81 do 105 dB@1m z LED signalizacijo. Bele barve.",cena:77,enota:"KOS"},
+    {koda:"SIR-ZUN-BW",naziv:"Brezžicna zunanja sirena",opis:"Brezžicna zunanja sirena nastavljive glasnosti od 81 do 105 dB@1m z LED signalizacijo, v beli barvi.",cena:154,enota:"KOS"},
+    {koda:"PANIK",naziv:"Panik tipka bela brezžicna",opis:"Brezžicna panik tipka, s sistemom proti namerni aktivaciji. Aktiviranje s pritiskom na tipko za vec kot 1,5 sekunde, ali z dvojnim pritiskom s premorom manj kot 0,5 sekunde. IP54 zašcita.",cena:38,enota:"KOS"},
+    {koda:"DVOJNI-KOM",naziv:"Dvojni univerzalni komunikator",opis:"Dvojni univerzalni komunikator. Omogocena nadzirana komunikacija preko LAN in GPRS kanala v SIA-IP formatu (Enigma II IP sprejmenik), ter backup GSM.",cena:165,enota:"KOS"},
+    {koda:"AKU-7",naziv:"Akumulator 7AH/12V",opis:"Svinceni akumulator 7,2AH/12V.",cena:32,enota:"KOS"},
+    {koda:"AKU-2.3",naziv:"Akumulator 2.3AH/12V",opis:"Svinceni akumulator 2,3AH/12V.",cena:29,enota:"KOS"},
+    {koda:"AJAX-HUB",naziv:"AJAX HUB WH Centralna enota Hub",opis:"AJAX Hub - centralna enota brezžicnega alarmnega sistema.",cena:185,enota:"KOS"},
+    {koda:"AJAX-DOOR",naziv:"AJAX DOORPR WH Magnetni kontakt",opis:"AJAX magnetni kontakt za vrata in okna.",cena:45,enota:"KOS"},
+    {koda:"AJAX-PIR",naziv:"AJAX MOTIONPR WH PIR detektor",opis:"AJAX brezžicni PIR detektor gibanja.",cena:95,enota:"KOS"},
+    {koda:"AJAX-SIR",naziv:"AJAX HOME SIR WH Notranja sirena",opis:"AJAX brezžicna notranja sirena.",cena:89,enota:"KOS"},
+    {koda:"AJAX-KEY",naziv:"AJAX KEYPAD WH Tipkovnica",opis:"AJAX brezžicna tipkovnica.",cena:125,enota:"KOS"},
+    {koda:"PAR-MG5",naziv:"PAR MG5000 Alarmna centrala",opis:"Paradox MG5000 - alarmna centrala do 32 con.",cena:138,enota:"KOS"},
+    {koda:"PAR-DG55",naziv:"PAR DG55 Senzor gibanja IR",opis:"Paradox DG55 - digitalni žicni senzor gibanja z dvojnim PIR.",cena:27,enota:"KOS"},
+    {koda:"TRIKDIS",naziv:"TRIKDIS E16 Komunikator",opis:"TRIKDIS E16 - komunikator za priklop na VNC.",cena:165,enota:"KOS"}
+  ],
+  pozarni:[
+    {koda:"PREV-C050",naziv:"Požarna centrala PREVIDIA",opis:"Analogno adresabilna modularna protipožarna centrala, centrala za gašenje ter za zasilno razsvetljavo z 7 zaslonom na dotik. Centrala z mrežno zmogljivostjo detekcije požara in alarmnih signalnih sistemov. Omogoca razširitev do 16 zank, HOT SWAP tehnologija.",cena:2364,enota:"KOS"},
+    {koda:"IFM2L",naziv:"Kontrolni modul zancna kartica IFM2L",opis:"IFM2L modul za upravljanje z dvemi zankami naprav razporejenih v zašcitenem podrocju. Vsebuje namenski CPU za kontrolo modula in komunikacijo z FPMCP modulom, 5 statusnih led diod, mini USB port, HOT SWAP tehnologijo.",cena:998,enota:"KOS"},
+    {koda:"MOD-POV",naziv:"Modul za povezovanje požarne centrale",opis:"Modul za povezovanje protipožarne centrale Praesidia na Hornet+network. Možnost nastavitve hitrosti komunikacije od 9600 do 512k bauda.",cena:518,enota:"KOS"},
+    {koda:"AKU-17AH",naziv:"Akumulator 12V/17AH (18AH)",opis:"Svinceni akumulator AKUMULATOR 12V/17AH (18AH).",cena:52,enota:"KOS"},
+    {koda:"REP-4",naziv:"Locen prikazovalnik Repeater 4 zaslon",opis:"Locen prikazovalnik - Repeater z 4 graficnim barvnim zaslonom na dotik, za protipožarne centrale iz PREVIDIA MAX in PREVIDIA Compact serije.",cena:249.48,enota:"KOS"},
+    {koda:"JAV-OPT",naziv:"Adresabilni požarni javljalnik opticni",opis:"Analogno-adresabilni opticni protipožarni detektor z izolatorjem, Inim protokol, vgrajen spomin nivoja dima v opticni komori v obdobju 5min pred zadnjim detektiranim alarmom, trobarvna LED vidna 360°.",cena:43,enota:"KOS"},
+    {koda:"JAV-OT",naziv:"Adresabilni javljalnik opticno-termicni",opis:"Analogno-adresabilni opticno-termicni protipožarni detektor z izolatorjem, Inim protokol.",cena:47,enota:"KOS"},
+    {koda:"POD-JAV",naziv:"Podnožje za požarne javljalnike",opis:"Podnožje za konvencionalne detektorje Iris serije in adresabilne detektorje Enea serije.",cena:4,enota:"KOS"},
+    {koda:"ROC-JAV",naziv:"Adresabilni rocni javljalnik IP67",opis:"Adresabilen, rocni javljalnik požara z izolatorjem, brez razbijanja stekla, rdece barve, reset s kljucem (v kompletu), Inim protokol.",cena:54,enota:"KOS"},
+    {koda:"ZAS-ROC",naziv:"Zašcitno pokrivalo za rocni javljalnik",opis:"Pleksi pokrov za zašcito pred nakljucnim sproženjem za rocne javljalnike S-EC0020.",cena:1.80,enota:"KOS"},
+    {koda:"SIR-POZ",naziv:"Adresabilna sirena za javljanje požara",opis:"Adresabilna rdeca sirena za javljanje požara, napaja se iz zanke, IP67, primerna tudi za zunanjo montažo, Inim protokol.",cena:96,enota:"KOS"},
+    {koda:"VI-MOD",naziv:"Adresabilni V/I modul 4CH",opis:"Vhodno-izhodni modul, 4 vhodi, 4 relejski brezpotencialni izhodi, inim protokol, vgrajen izolator.",cena:144,enota:"KOS"},
+    {koda:"IP65-OHI",naziv:"IP65 ohišje za namestitev modulov",opis:"IP 65 ohišje bele barve, za namestitev modulov, dimenzije 16x12x5 cm.",cena:66,enota:"KOS"},
+    {koda:"NAL-ROC",naziv:"Nalepka rocni javljalec 150x150mm",opis:"Nalepka rocni javljalec 150x150mm.",cena:4.80,enota:"KOS"},
+    {koda:"NAL-SIR",naziv:"Nalepka sirena 150x150mm",opis:"Nalepka sirena 150x150mm.",cena:4.80,enota:"KOS"},
+    {koda:"OZN-POZ",naziv:"Oznake požarnih elementov",opis:"Oznake požarnih elementov.",cena:4.25,enota:"KOS"}
+  ],
+  video:[
+    {koda:"NVR-4CH",naziv:"NVR 4CH POE snemalnik 6MPX",opis:"Samostojni 4-kanalni NVR, 4 x PoE stikalo, podpira 6Mpx, 5Mpx/4Mpx/3Mpx/1080p DVC IP kamere, 1 x HDD, quadplex, H.264/H.265 stiskanje, hitrost snemanja 6Mpx @25fps na kanal, HDMI, P2P, LAN, DHCP, DDNS, mobilni odjemalec.",cena:170.17,enota:"KOS"},
+    {koda:"CAM-4MPX",naziv:"Kamera 4MPX WiFi Bullet IP",opis:"4Mpx Wi-Fi bullet IP kamera, resolucija 4Mpx/25fps, 1/2.7 SmartSens SC4335, objektiv 2.8mm, 0,011Lux pri F1.2, H.264 in H.265, IR osvetlitev dometa 20-30 m, 12VDC/PoE, Onvif, videoanalitika VCA, podpira do 256GB SD kartice.",cena:139,enota:"KOS"},
+    {koda:"HDD-2TB",naziv:"Trdi disk 2TB vgrajen",opis:"Trdi disk kapacitete 2TByte, za digitalne snema lnike, vgrajen in konfiguriran.",cena:145,enota:"KOS"},
+    {koda:"NVR-16CH",naziv:"NVR 16CH POE snemalnik",opis:"NVR snemalnik 16 kanalov POE.",cena:485,enota:"KOS"},
+    {koda:"CAM-6MP",naziv:"Kamera IP 6MP Dome AI",opis:"IP kamera 6MP Dome z AI detekcijo.",cena:185,enota:"KOS"},
+    {koda:"SWITCH-8P",naziv:"Switch 8Port 100MB POE",opis:"Switch 8 portni 100MB POE.",cena:75,enota:"KOS"},
+    {koda:"POD-CAM",naziv:"Podnožje za kamere",opis:"Podnožje za IP kamere.",cena:15,enota:"KOS"},
+    {koda:"HDD-8TB",naziv:"Trdi disk 8TB vgrajen",opis:"Trdi disk kapacitete 8TByte, vgrajen in konfiguriran.",cena:185,enota:"KOS"}
+  ]
+};
+var kSet={};var kAll=[];
+["protivlomni","pozarni","video"].forEach(function(t){CENIK[t].forEach(function(a){if(!kSet[a.koda]){kAll.push(a);kSet[a.koda]=1;}});});
+CENIK.kombinirani=kAll;
+
+var KABLI=[
+  {koda:"KAB-UTP",naziv:"Kabel UTP CAT5 instalacijski",cena:1.20,enota:"m"},
+  {koda:"KAB-LYSTY",naziv:"Požarni kabel LYSTY+ 1X2X1",cena:1.80,enota:"m"},
+  {koda:"KAB-KOA",naziv:"Koaksialni kabel RG59",cena:0.90,enota:"m"},
+  {koda:"KAB-NYM",naziv:"Elektricni kabel NYM 3x1.5",cena:1.50,enota:"m"},
+  {koda:"KAB-ALARM",naziv:"Alarmni kabel 2x0.5",cena:0.60,enota:"m"},
+  {koda:"KAB-DRUG",naziv:"Drug kabel (rocni vnos)",cena:0,enota:"m"}
+];
+
+var AI_CFG={
+  protivlomni:function(p,v,pr,to){
+    var s=Math.max(2,Math.ceil((p||100)/25));
+    if(pr) s=Math.max(s,pr);
+    var m=Math.max(2,v||3);
+    var tipO=to||"hisa";
+    var opis="Za "+tipO+" "+( p?p+"m2 ":"")+( pr?"("+pr+" prostorov) ":"")+( v?"s "+v+" vhodi ":"")+"priporocam ";
+    var brezz=(tipO==="stanovanje"||p<120);
+    if(brezz){
+      opis+="brezžicni sistem HUB2 z "+m+" magnetnimi kontakti za vhode in "+s+" PIR detektorji za prostore.";
+      return{tekst:opis,artikli:[{k:"HUB2",q:1},{k:"TIPK-BW",q:1},{k:"PIR-BW",q:s},{k:"SIR-NOT-BW",q:1},{k:"SIR-ZUN-BW",q:1},{k:"DVOJNI-KOM",q:1},{k:"AKU-7",q:1}]};
+    } else {
+      opis+="hibridno centralo z žicnimi PIR detektorji ("+s+" kom) in komunikatorjem za VNC priklop.";
+      return{tekst:opis,artikli:[{k:"ALM-C-HIB",q:1},{k:"OHI-PAR",q:1},{k:"TIPK-LED",q:1},{k:"PIR-ZIC",q:s},{k:"SIR-ZUN",q:1},{k:"DVOJNI-KOM",q:1},{k:"AKU-7",q:1},{k:"AKU-2.3",q:1}]};
+    }
+  },
+  pozarni:function(p,v,pr,to){
+    var j=Math.max(2,Math.ceil((p||100)/30));
+    if(pr) j=Math.max(j,pr);
+    return{tekst:"Za požarno zašcito objekta "+(p?p+"m2 ":"")+"priporocam centralo Previdia z "+j+" javljalniki in "+Math.ceil(j/5)+" rocnimi javljalniki.",
+    artikli:[{k:"PREV-C050",q:1},{k:"IFM2L",q:1},{k:"MOD-POV",q:1},{k:"JAV-OPT",q:j},{k:"ROC-JAV",q:Math.max(1,Math.ceil(j/5))},{k:"SIR-POZ",q:Math.max(1,Math.ceil(j/10))},{k:"POD-JAV",q:j},{k:"AKU-17AH",q:2},{k:"DVOJNI-KOM",q:1}]};
+  },
+  video:function(p,v,pr,to){
+    var c=Math.max(2,v||3);
+    if(pr) c=Math.max(c,Math.ceil(pr/2));
+    return{tekst:"Za video nadzor objekta "+(p?p+"m2 ":"")+"s "+c+" nadzorovanimi tockami priporocam NVR z "+c+" WiFi kamerami.",
+    artikli:[{k:"NVR-4CH",q:1},{k:"CAM-4MPX",q:c},{k:"HDD-2TB",q:1},{k:"POD-CAM",q:c}]};
+  },
+  kombinirani:function(p,v,pr,to){
+    var s=Math.max(2,Math.ceil((p||100)/30));
+    return{tekst:"Kombinirani sistem: protivlomni AJAX, požarni INIM in video nadzor za objekt "+(p?p+"m2":"")+".",
+    artikli:[{k:"HUB2",q:1},{k:"PIR-BW",q:s},{k:"PREV-C050",q:1},{k:"JAV-OPT",q:Math.ceil(s*0.8)},{k:"CAM-4MPX",q:2},{k:"NVR-4CH",q:1},{k:"DVOJNI-KOM",q:1}]};
+  }
+};
+
+var INST_OPOMBA={
+  predprip:"Montaža se izvaja na predpripravljeno instalacijo.",
+  kabliranje:"Vkljucuje kompletno kabliranje in instalacijo.",
+  brezz:"Sistem je brezžicen — brez kabliranja."
+};
+
+var BADGE={protivlomni:"Protivlomni sistem",pozarni:"Požarni sistem",video:"Video nadzor",kombinirani:"Kombinirani sistem"};
+var TIP="protivlomni";
+var TIP_STRANKE="fizicna";
+var TIP_INST="predprip";
+var vrstice=[];
+var kabliranjeVrstice=[];
+var aiPredlog=null;
+var ponudbaData=null;
+
+document.addEventListener("DOMContentLoaded",function(){
+  var d=new Date();
+  document.getElementById("docDate").textContent=d.toLocaleDateString("sl-SI",{day:"2-digit",month:"2-digit",year:"numeric"});
+  document.getElementById("docNumber").textContent="PR-"+d.getFullYear()+"-"+(Math.floor(Math.random()*900)+100);
+  renderTab();posodobiStoritve();renderKabliranje();
+  document.getElementById("opomba").value=INST_OPOMBA[TIP_INST];
+});
+
+function izberStranko(t){
+  TIP_STRANKE=t;
+  document.getElementById("tip-fizicna").className="toggle-btn"+(t==="fizicna"?" active-fizicna":"");
+  document.getElementById("tip-pravna").className="toggle-btn"+(t==="pravna"?" active-pravna":"");
+  var ddvRow=document.getElementById("ddvRow");
+  var ddvLabel=document.getElementById("ddvLabel");
+  if(t==="pravna"){ddvLabel.textContent="DDV - Obrnjena davčna obveznost (76.a clen)";}
+  else{ddvLabel.textContent="DDV (22%)";}
+  izracunaj();
+}
+
+function izberTip(tip){
+  TIP=tip;
+  ["protivlomni","pozarni","video","kombinirani"].forEach(function(t){
+    var b=document.getElementById("tip-"+t);b.className="tip-btn";
+    if(t===tip)b.className+=" active-"+t;
+  });
+  document.getElementById("sistemBadge").textContent=BADGE[tip];
+  document.getElementById("sistemBadge").className="section-badge badge-"+tip;
+  vrstice=[];renderTab();posodobiAI();
+}
+
+function izberInst(inst){
+  TIP_INST=inst;
+  ["predprip","kabliranje","brezz"].forEach(function(i){
+    document.getElementById("inst-"+i).className="inst-btn"+(i===inst?" active":"");
+  });
+  document.getElementById("opomba").value=INST_OPOMBA[inst];
+}
+
+function posodobiAI(){
+  var p=parseFloat(document.getElementById("povrsina").value)||0;
+  var v=parseInt(document.getElementById("vhodi").value)||0;
+  var pr=parseInt(document.getElementById("prostori").value)||0;
+  var to=document.getElementById("tipObjekta").value;
+  if(!p&&!v&&!pr){document.getElementById("aiBox").className="ai-box";return;}
+  var cfg=AI_CFG[TIP](p,v,pr,to);aiPredlog=cfg;
+  document.getElementById("aiTekst").textContent=cfg.tekst;
+  var cenik=CENIK[TIP];
+  document.getElementById("aiPills").innerHTML=cfg.artikli.map(function(x){
+    var a=cenik.filter(function(c){return c.koda===x.k;})[0];
+    return a?"<span class=\"ai-pill\">"+a.koda+" x"+x.q+"</span>":"";
+  }).filter(Boolean).join("");
+  document.getElementById("aiBox").className="ai-box visible";
+}
+
+async function kliciAIGenerator(){
+  var opis=document.getElementById("aiOpis").value.trim();
+  if(!opis){napaka("Vnesite opis objekta za AI generator.");return;}
+  var btn=document.getElementById("btnGenAI");
+  var txt=document.getElementById("genaiTxt");
+  btn.className="btn-genai loading";
+  txt.textContent="AI analizira objekt...";
+  try{
+    var p=parseFloat(document.getElementById("povrsina").value)||0;
+    var v=parseInt(document.getElementById("vhodi").value)||0;
+    var pr=parseInt(document.getElementById("prostori").value)||0;
+    var to=document.getElementById("tipObjekta").value;
+    var sistemCenik=CENIK[TIP].map(function(a){return a.koda+": "+a.naziv+" ("+a.cena+" EUR)"}).join("\n");
+    var resp=await fetch("/api/ai",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-haiku-4-5-20251001",
+        max_tokens:600,
+        messages:[{role:"user",content:"Si strokovnjak za varnostne sisteme FIT VAROVANJE. Na osnovi opisa objekta predlagaj optimalno konfiguracijo za TIP: "+TIP+". Odgovori SAMO z JSON objektom brez markdown.\n\nOpis objekta: "+opis+"\n\nDodatni parametri: povrsina="+p+"m2, prostori="+pr+", vhodi="+v+", tip="+to+"\n\nDostopni artikli:\n"+sistemCenik+"\n\nOdgovori SAMO s tem JSON formatom:\n{\"konfiguracija\":\"kratka razlaga\",\"artikli\":[{\"koda\":\"KOD\",\"kolicina\":1,\"razlog\":\"zakaj\"}]}"}]
+      })
+    });
+    var data=await resp.json();
+    var txt2=data.content&&data.content[0]?data.content[0].text:"{}";
+    var parsed=JSON.parse(txt2.replace(/```json|```/g,"").trim());
+    if(parsed.konfiguracija){
+      document.getElementById("aiTekst").textContent=parsed.konfiguracija;
+    }
+    if(parsed.artikli&&parsed.artikli.length>0){
+      aiPredlog={tekst:parsed.konfiguracija||"",artikli:parsed.artikli.map(function(a){return{k:a.koda,q:a.kolicina||1};})};
+      var cenik=CENIK[TIP];
+      document.getElementById("aiPills").innerHTML=parsed.artikli.map(function(a){
+        var art=cenik.filter(function(c){return c.koda===a.koda;})[0];
+        return art?"<span class=\"ai-pill\">"+a.koda+" x"+a.kolicina+"</span>":"";
+      }).filter(Boolean).join("");
+      document.getElementById("aiBox").className="ai-box visible";
+    }
+  }catch(e){
+    var p2=parseFloat(document.getElementById("povrsina").value)||100;
+    var v2=parseInt(document.getElementById("vhodi").value)||3;
+    var pr2=parseInt(document.getElementById("prostori").value)||0;
+    var to2=document.getElementById("tipObjekta").value;
+    var cfg=AI_CFG[TIP](p2,v2,pr2,to2);
+    aiPredlog=cfg;
+    document.getElementById("aiTekst").textContent=cfg.tekst+" (Lokalni predlog)";
+    var cenik2=CENIK[TIP];
+    document.getElementById("aiPills").innerHTML=cfg.artikli.map(function(x){
+      var art=cenik2.filter(function(c){return c.koda===x.k;})[0];
+      return art?"<span class=\"ai-pill\">"+art.koda+" x"+x.q+"</span>":"";
+    }).filter(Boolean).join("");
+    document.getElementById("aiBox").className="ai-box visible";
+  }
+  btn.className="btn-genai";
+  document.getElementById("genaiTxt").textContent="&#129504; Generiraj konfiguracijo z AI";
+}
+
+function dodajAIPredlog(){
+  if(!aiPredlog)return;
+  vrstice=[];
+  aiPredlog.artikli.forEach(function(x){
+    var a=CENIK[TIP].filter(function(c){return c.koda===x.k;})[0];
+    if(a)vrstice.push({id:Date.now()+Math.random(),artikel:a,kolicina:x.q});
+  });renderTab();
+}
+
+function dodajPrazno(){vrstice.push({id:Date.now()+Math.random(),artikel:null,kolicina:1});renderTab();}
+function odstraniV(id){vrstice=vrstice.filter(function(v){return v.id!==id;});renderTab();izracunaj();}
+
+function renderTab(){
+  var body=document.getElementById("tabBody");
+  if(!vrstice.length){body.innerHTML="<div class=\"empty-state\">Dodajte artikle ali uporabite AI generator</div>";izracunaj();return;}
+  var cenik=CENIK[TIP];
+  body.innerHTML=vrstice.map(function(v,i){
+    var c=v.artikel?v.artikel.cena:0;var vr=c*(v.kolicina||0);
+    var opts=cenik.map(function(a){return "<option value=\""+a.koda+"\""+( v.artikel&&v.artikel.koda===a.koda?" selected":"")+">"+a.naziv+"</option>";}).join("");
+    return "<div class=\"artikel-row\" id=\"r"+v.id+"\">"+
+      "<div class=\"row-num\">"+(i+1)+"</div>"+
+      /* Artikel select - spans full width on mobile */
+      "<div style=\"display:contents\">"+
+        "<select onchange=\"sprA('"+v.id+"',this.value)\" style=\"font-size:14px\"><option value=\"\">-- Izberi artikel --</option>"+opts+"</select>"+
+      "</div>"+
+      /* Cena - hidden on mobile via CSS, shown in header on desktop */
+      "<input type=\"number\" value=\""+c.toFixed(2)+"\" readonly style=\"background:var(--bg);color:var(--muted);text-align:right;font-size:13px\">"+
+      /* Kolicina */
+      "<input type=\"number\" value=\""+v.kolicina+"\" min=\"0.01\" step=\"1\" onchange=\"sprK('"+v.id+"',this.value)\" style=\"text-align:center;font-size:14px\" placeholder=\"Kol.\">"+
+      /* Vrednost */
+      "<div class=\"cena-display\" id=\"vr"+v.id+"\">"+fEUR(vr)+"</div>"+
+      /* Odstrani */
+      "<button class=\"btn-rm\" onclick=\"odstraniV('"+v.id+"')\" title=\"Odstrani\">&#10005;</button>"+
+    "</div>";
+  }).join("");
+  izracunaj();
+}
+
+function sprA(id,koda){
+  var v=vrstice.filter(function(x){return String(x.id)===String(id);})[0];if(!v)return;
+  v.artikel=CENIK[TIP].filter(function(a){return a.koda===koda;})[0]||null;renderTab();
+}
+function sprK(id,val){
+  var v=vrstice.filter(function(x){return String(x.id)===String(id);})[0];if(!v)return;
+  v.kolicina=parseFloat(val)||0;
+  var row=document.getElementById("r"+id);
+  if(row&&v.artikel)row.querySelector(".cena-display").textContent=fEUR(v.artikel.cena*v.kolicina);
+  izracunaj();
+}
+
+// KABLIRANJE
+function dodajKabliranje(){
+  kabliranjeVrstice.push({id:Date.now()+Math.random(),koda:"KAB-UTP",naziv:"Kabel UTP CAT5 instalacijski",cenaEnota:1.20,metrov:0,opisRocni:""});
+  renderKabliranje();
+}
+function odstraniKab(id){
+  kabliranjeVrstice=kabliranjeVrstice.filter(function(k){return k.id!==id;});
+  renderKabliranje();izracunaj();
+}
+function renderKabliranje(){
+  var div=document.getElementById("kabliranjeRows");
+  if(!kabliranjeVrstice.length){div.innerHTML="";izracunaj();return;}
+  div.innerHTML=kabliranjeVrstice.map(function(k){
+    var vr=(k.cenaEnota||0)*(k.metrov||0);
+    var kabOpts=KABLI.map(function(kb){return "<option value=\""+kb.koda+"\""+( k.koda===kb.koda?" selected":"")+">"+kb.naziv+"</option>";}).join("");
+    return "<div class=\"kab-row\" id=\"kab"+k.id+"\">"+
+      "<div class=\"field\" style=\"gap:3px\"><label>Tip kabla</label><select onchange=\"sprKab('"+k.id+"',this.value)\">"+kabOpts+"</select>"+
+      (k.koda==="KAB-DRUG"?"<input type=\"text\" placeholder=\"Opis kabla...\" value=\""+k.opisRocni+"\" onchange=\"sprKabOpis('"+k.id+"',this.value)\" style=\"margin-top:4px\" />":"")+"</div>"+
+      "<div class=\"field\" style=\"gap:3px\"><label>Cena EUR/m</label><input type=\"number\" value=\""+k.cenaEnota+"\" step=\"0.01\" min=\"0\" onchange=\"sprKabCena('"+k.id+"',this.value)\"></div>"+
+      "<div class=\"field\" style=\"gap:3px\"><label>Stevilo metrov</label><input type=\"number\" value=\""+k.metrov+"\" min=\"0\" onchange=\"sprKabM('"+k.id+"',this.value)\"></div>"+
+      "<div class=\"field\" style=\"gap:3px\"><label>Vrednost</label><div style=\"padding:9px 11px;font-size:13px;font-weight:700;color:var(--accent)\">"+fEUR(vr)+"</div>"+
+      "<button class=\"btn-rm\" onclick=\"odstraniKab('"+k.id+"')\" style=\"margin-top:2px\">x</button></div>"+
+    "</div>";
+  }).join("");
+  izracunaj();
+}
+function sprKab(id,koda){
+  var k=kabliranjeVrstice.filter(function(x){return String(x.id)===String(id);})[0];if(!k)return;
+  var kb=KABLI.filter(function(x){return x.koda===koda;})[0];
+  if(kb){k.koda=kb.koda;k.naziv=kb.naziv;k.cenaEnota=kb.cena;}
+  renderKabliranje();
+}
+function sprKabOpis(id,val){
+  var k=kabliranjeVrstice.filter(function(x){return String(x.id)===String(id);})[0];if(k)k.opisRocni=val;izracunaj();
+}
+function sprKabCena(id,val){
+  var k=kabliranjeVrstice.filter(function(x){return String(x.id)===String(id);})[0];if(k){k.cenaEnota=parseFloat(val)||0;renderKabliranje();}
+}
+function sprKabM(id,val){
+  var k=kabliranjeVrstice.filter(function(x){return String(x.id)===String(id);})[0];if(!k)return;
+  k.metrov=parseFloat(val)||0;
+  var row=document.getElementById("kab"+id);
+  if(row){var vals=row.querySelectorAll(".field div");if(vals.length>0)vals[vals.length-1].textContent=fEUR(k.cenaEnota*k.metrov);}
+  izracunaj();
+}
+
+function posodobiStoritve(){
+  var tip=document.getElementById("deloTip").value;
+  document.getElementById("deloPassualDiv").style.display=tip==="pausal"?"block":"none";
+  document.getElementById("deloUrnoDiv").style.display=tip==="urno"?"block":"none";
+  var delo=0;
+  if(tip==="pausal"){
+    delo=(parseFloat(document.getElementById("deloPausal").value)||0)+(parseFloat(document.getElementById("programiranje").value)||0);
+  } else {
+    delo=(parseFloat(document.getElementById("deloUre").value)||0)*(parseFloat(document.getElementById("deloUrnaPostavka").value)||0);
+  }
+  document.getElementById("deloSkupaj").textContent=fEUR(delo);
+  var kpl=parseFloat(document.getElementById("potKpl").value)||0;
+  var km=parseFloat(document.getElementById("potKm").value)||0;
+  document.getElementById("potKplVal").textContent=fEUR(kpl*34.50);
+  document.getElementById("potKmVal").textContent=fEUR(km*0.50);
+  document.getElementById("potSkupaj").textContent=fEUR(kpl*34.50+km*0.50);
+  izracunaj();
+}
+
+function izracunaj(){
+  var material=0;
+  vrstice.forEach(function(v){if(v.artikel)material+=v.artikel.cena*(v.kolicina||0);});
+  var kabliranje=0;
+  kabliranjeVrstice.forEach(function(k){kabliranje+=k.cenaEnota*(k.metrov||0);});
+  var drobni=material*0.03;
+  var tip=document.getElementById("deloTip").value;
+  var delo=0;
+  if(tip==="pausal"){
+    delo=(parseFloat(document.getElementById("deloPausal").value)||0)+(parseFloat(document.getElementById("programiranje").value)||0);
+  } else {
+    delo=(parseFloat(document.getElementById("deloUre").value)||0)*(parseFloat(document.getElementById("deloUrnaPostavka").value)||0);
+  }
+  var kpl=parseFloat(document.getElementById("potKpl").value)||0;
+  var km=parseFloat(document.getElementById("potKm").value)||0;
+  var potovanje=kpl*34.50+km*0.50;
+  var skupajBrezDDV=material+kabliranje+drobni+delo+potovanje;
+  var popustPct=parseFloat(document.getElementById("popust").value)||0;
+  var popustAmt=skupajBrezDDV*popustPct/100;
+  var poPopustu=skupajBrezDDV-popustAmt;
+  var ddv=TIP_STRANKE==="pravna"?0:poPopustu*0.22;
+  var skupajDDV=poPopustu+ddv;
+  document.getElementById("drobniVal").textContent=fEUR(drobni);
+  document.getElementById("rekMaterial").textContent=fEUR(material);
+  document.getElementById("rekKabliranje").textContent=fEUR(kabliranje);
+  document.getElementById("rekStoritve").textContent=fEUR(delo);
+  document.getElementById("rekPotovanje").textContent=fEUR(potovanje);
+  document.getElementById("sMaterial").textContent=fEUR(material);
+  document.getElementById("sKabliranje").textContent=fEUR(kabliranje);
+  document.getElementById("sDrobni").textContent=fEUR(drobni);
+  document.getElementById("sStoritve").textContent=fEUR(delo);
+  document.getElementById("sPotovanje").textContent=fEUR(potovanje);
+  document.getElementById("sBrezDDV").textContent=fEUR(skupajBrezDDV);
+  document.getElementById("sPopust").textContent="- "+fEUR(popustAmt);
+  document.getElementById("sDDV").textContent=TIP_STRANKE==="pravna"?"Obrnjena DDV (76.a clen)":fEUR(ddv);
+  document.getElementById("sSkupaj").textContent=fEUR(skupajDDV);
+  return{material,kabliranje,drobni,delo,potovanje,skupajBrezDDV,popustAmt,poPopustu,ddv,skupajDDV};
+}
+
+function fEUR(v){return parseFloat(v||0).toLocaleString("sl-SI",{minimumFractionDigits:2,maximumFractionDigits:2})+" EUR";}
+function f2(v){return parseFloat(v||0).toFixed(2);}
+
+function generiraj(){
+  var str=document.getElementById("stranka").value.trim();
+  var obj=document.getElementById("objekt").value.trim();
+  var izb=vrstice.filter(function(v){return v.artikel;});
+  if(!str){napaka("Prosim vnesite naziv stranke.");return;}
+  if(!obj){napaka("Prosim vnesite naziv objekta.");return;}
+  var z=izracunaj();
+  var tip=document.getElementById("deloTip").value;
+  var deloEl=document.getElementById("deloPausal");
+  var deloOpis=tip==="pausal"?(deloEl.options[deloEl.selectedIndex].text):("Urna postavka "+document.getElementById("deloUrnaPostavka").value+"EUR x "+document.getElementById("deloUre").value+"h");
+  var progEl=document.getElementById("programiranje");
+  var progOpis=progEl.value!="0"?progEl.options[progEl.selectedIndex].text:"";
+  ponudbaData={
+    str,obj,naslov:document.getElementById("naslov").value,
+    kontakt:document.getElementById("kontakt").value,email:document.getElementById("email").value,
+    ddvStevilka:document.getElementById("ddvStevilka").value,
+    tip:TIP,tipStranke:TIP_STRANKE,tipInst:TIP_INST,
+    veljavnost:document.getElementById("veljavnost").value,
+    opomba:document.getElementById("opomba").value,
+    sifraTehnika:document.getElementById("sifraTehnika").value,
+    artikli:izb.map(function(v){return{koda:v.artikel.koda,naziv:v.artikel.naziv,opis:v.artikel.opis||"",cena:v.artikel.cena,enota:v.artikel.enota,kolicina:v.kolicina,vrednost:v.artikel.cena*v.kolicina};}),
+    kabli:kabliranjeVrstice.filter(function(k){return k.metrov>0;}).map(function(k){return{naziv:k.koda==="KAB-DRUG"?k.opisRocni:k.naziv,cenaEnota:k.cenaEnota,metrov:k.metrov,vrednost:k.cenaEnota*k.metrov};}),
+    deloOpis,progOpis,
+    potKpl:parseFloat(document.getElementById("potKpl").value)||0,
+    potKm:parseFloat(document.getElementById("potKm").value)||0,
+    ...z,
+    docNumber:document.getElementById("docNumber").textContent,
+    datum:new Date().toLocaleDateString("sl-SI")
+  };
+  prikaziPDF();
+}
+
+function prikaziPDF(){
+  var d=ponudbaData;
+  var TIPS={protivlomni:"Protivlomni sistem",pozarni:"Pozarni sistem",video:"Video nadzor",kombinirani:"Kombinirani sistem"};
+  document.getElementById("pdfTitle").textContent="Predracun "+d.docNumber;
+
+  var h="";
+
+  // GLAVA FIT VAROVANJE
+  h+="<div style=\"font-family:Arial,sans-serif;font-size:11px;color:#333\">";
+  h+="<table style=\"width:100%;border-collapse:collapse;margin-bottom:16px\"><tr>";
+  h+="<td style=\"width:50%;vertical-align:top\"><div style=\"color:#c8102e;font-size:20px;font-weight:bold;font-family:Arial Black,sans-serif\">FIT VAROVANJE</div>";
+  h+="<div style=\"font-size:10px;color:#666;margin-top:2px\">ŽE VEC KOT 35 LET</div></td>";
+  h+="<td style=\"width:50%;vertical-align:top;text-align:right;font-size:10px;color:#666\">FIT VAROVANJE, d. d.<br>Mala ulica 1, 1000 Ljubljana<br>T.: 01/431 03 13, F.: 01/431 03 18<br>Maticna st.: 5174503, Davcna st.: 69887691<br>ID za DDV: SI69887691<br>IBAN: SI56 0202 5001 3359 138</td>";
+  h+="</tr></table>";
+
+  h+="<table style=\"width:100%;border-collapse:collapse;margin-bottom:16px\"><tr>";
+  h+="<td style=\"width:45%;vertical-align:top\"><div style=\"font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px\">Narocnik:</div>";
+  h+="<div style=\"font-weight:bold\">"+d.str+"</div><div>"+( d.naslov||"")+"</div>";
+  if(d.ddvStevilka)h+="<div>ID za DDV: "+d.ddvStevilka+"</div>";
+  h+="</td><td style=\"width:10%\"></td>";
+  h+="<td style=\"width:45%;vertical-align:top\"><div style=\"font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px\">Objekt:</div>";
+  h+="<div style=\"font-weight:bold\">"+d.obj+"</div></td></tr></table>";
+
+  h+="<table style=\"width:100%;border-collapse:collapse;margin-bottom:4px\"><tr>";
+  h+="<td><span style=\"font-weight:bold\">Datum</span> &nbsp; "+d.datum+"</td>";
+  h+="<td><span style=\"font-weight:bold\">Veljavnost</span> &nbsp; "+d.veljavnost+" dni po datumu ponudbe</td></tr></table>";
+
+  h+="<div style=\"border-bottom:3px solid #c8102e;margin:6px 0 10px\"></div>";
+  h+="<div style=\"font-size:20px;font-weight:bold;color:#c8102e;margin-bottom:8px\">Predracun "+d.docNumber+"</div>";
+  h+="<div style=\"font-size:10px;font-weight:bold;margin-bottom:8px\">Placilo v roku "+d.veljavnost+" dni po izdanem racunu</div>";
+
+  if(d.opomba)h+="<div style=\"font-size:10px;font-style:italic;color:#666;margin-bottom:10px\">"+d.opomba+"</div>";
+
+  // TABELA ARTIKLOV
+  h+="<table style=\"width:100%;border-collapse:collapse;margin-bottom:10px\">";
+  h+="<thead><tr style=\"background:#1a1a2e;color:#fff\">";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:left;width:24px\">Poz.</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:left\">Naziv</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:center;width:45px\">Kolicina</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:center;width:35px\">EM</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:right;width:65px\">Cena EUR</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:right;width:25px\">R.%</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:right;width:25px\">DDV%</th>";
+  h+="<th style=\"padding:5px 7px;font-size:9px;text-align:right;width:70px\">Vrednost</th>";
+  h+="</tr></thead><tbody>";
+
+  var poz=1;
+  d.artikli.forEach(function(a){
+    h+="<tr style=\"border-bottom:1px solid #eee\">";
+    h+="<td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+    h+="<td style=\"padding:4px 7px\"><div style=\"font-weight:bold;font-size:10px\">"+a.naziv+"</div>";
+    if(a.opis)h+="<div style=\"font-size:9px;color:#666;margin-top:2px;line-height:1.4\">"+a.opis+"</div>";
+    h+="</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px\">"+a.kolicina+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px;color:#888\">"+( a.enota||"KOS")+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">"+f2(a.cena)+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">22,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(a.vrednost)+"</td>";
+    h+="</tr>"; poz++;
+  });
+
+  // DROBNI MATERIAL
+  h+="<tr style=\"border-bottom:1px solid #eee\"><td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+  h+="<td style=\"padding:4px 7px\"><div style=\"font-size:10px;font-style:italic;color:#666\">Drobni specificni material (3% od materiala)</div></td>";
+  h+="<td colspan=\"5\" style=\"padding:4px 7px;text-align:right;font-size:10px;color:#888\">3%</td>";
+  h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(d.drobni)+"</td></tr>"; poz++;
+
+  // KABLIRANJE
+  if(d.kabli&&d.kabli.length>0){
+    d.kabli.forEach(function(k){
+      h+="<tr style=\"border-bottom:1px solid #eee\">";
+      h+="<td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+      h+="<td style=\"padding:4px 7px;font-size:10px;font-weight:bold\">"+k.naziv+"</td>";
+      h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px\">"+k.metrov+"</td>";
+      h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px;color:#888\">m</td>";
+      h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">"+f2(k.cenaEnota)+"</td>";
+      h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,00</td>";
+      h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">22,00</td>";
+      h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(k.vrednost)+"</td>";
+      h+="</tr>"; poz++;
+    });
+  }
+
+  // DELO
+  if(d.delo>0){
+    h+="<tr style=\"border-bottom:1px solid #eee\">";
+    h+="<td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+    h+="<td style=\"padding:4px 7px\"><div style=\"font-size:10px;font-weight:bold\">MONTAŽA</div>";
+    h+="<div style=\"font-size:9px;color:#666;margin-top:2px\">Dobava, vgradnja, povezava, parametriranje in nastavitev elementov. Izvedba funkcionalnih preizkusov delovanja elementov sistema, ter pricuitev in primopredaja narocniku.</div></td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px\">1,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px;color:#888\">KPL</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">"+f2(d.delo)+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">22,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(d.delo)+"</td></tr>"; poz++;
+  }
+
+  // PROGRAMIRANJE
+  if(d.progOpis&&d.progOpis!="Ni"){
+    h+="<tr style=\"border-bottom:1px solid #eee\">";
+    h+="<td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+    h+="<td style=\"padding:4px 7px\"><div style=\"font-size:10px;font-weight:bold\">PROGRAMIRANJE</div>";
+    h+="<div style=\"font-size:9px;color:#666;margin-top:2px\">Nacrtovanje novega ali sprememba obstojecega programa na podlagi specifikacij. Implementacija programa s testom delovanja ter primopredaja narocniku.</div></td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px\">1,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px;color:#888\">KPL</td>";
+    var progCena=parseFloat(document.getElementById("programiranje").value)||0;
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">"+f2(progCena)+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">22,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(progCena)+"</td></tr>"; poz++;
+  }
+
+  // POTOVANJE
+  if(d.potovanje>0&&d.potKpl>0){
+    h+="<tr style=\"border-bottom:1px solid #eee\">";
+    h+="<td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+    h+="<td style=\"padding:4px 7px;font-size:10px;font-weight:bold\">PRIPRAVA IN CAS NA POTI</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px\">"+d.potKpl+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px;color:#888\">KPL</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">34,50</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">22,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(d.potKpl*34.50)+"</td></tr>"; poz++;
+  }
+  if(d.potovanje>0&&d.potKm>0){
+    h+="<tr style=\"border-bottom:1px solid #eee\">";
+    h+="<td style=\"padding:4px 7px;text-align:center;color:#888;font-size:10px\">"+poz+"</td>";
+    h+="<td style=\"padding:4px 7px;font-size:10px;font-weight:bold\">KILOMETRINA</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px\">"+d.potKm+"</td>";
+    h+="<td style=\"padding:4px 7px;text-align:center;font-size:10px;color:#888\">km</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,50</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">0,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px\">22,00</td>";
+    h+="<td style=\"padding:4px 7px;text-align:right;font-size:10px;font-weight:bold\">"+f2(d.potKm*0.50)+"</td></tr>"; poz++;
+  }
+  h+="</tbody></table>";
+
+  // SKUPAJ
+  if(d.tipStranke==="pravna"){
+    h+="<table style=\"width:100%;border-collapse:collapse;margin-bottom:8px\"><tr>";
+    h+="<td style=\"font-size:11px;color:#888\">ID za DDV &nbsp; "+( d.ddvStevilka||"—")+"</td>";
+    h+="<td style=\"text-align:right;font-size:11px\"><span style=\"font-weight:bold\">Skupaj</span> &nbsp; 0,00</td></tr>";
+    h+="<tr><td></td><td style=\"text-align:right;font-size:11px\"><span style=\"font-weight:bold\">Osnova ODO</span> &nbsp; "+f2(d.poPopustu)+"</td></tr>";
+    h+="<tr><td colspan=\"2\"><div style=\"background:#c8102e;color:#fff;padding:5px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;margin-top:4px\">";
+    h+="<span>Za placilo EUR</span><span>"+f2(d.poPopustu)+"</span></div>";
+    h+="<div style=\"font-size:10px;color:#666;margin-top:4px\">Obrnjena davcna obveznost po 76.a clenu ZDDV-1 22% &nbsp; "+f2(d.poPopustu*0.22)+"</div></td></tr></table>";
+  } else {
+    h+="<table style=\"width:100%;border-collapse:collapse;margin-bottom:8px\"><tr>";
+    h+="<td></td><td style=\"text-align:right;font-size:11px\"><span style=\"font-weight:bold\">Skupaj</span> &nbsp; "+f2(d.skupajBrezDDV)+"</td></tr>";
+    h+="<tr><td></td><td style=\"text-align:right;font-size:11px\"><span style=\"font-weight:bold\">DDV</span> &nbsp; "+f2(d.ddv)+"</td></tr>";
+    h+="<tr><td colspan=\"2\"><div style=\"background:#c8102e;color:#fff;padding:5px 10px;font-weight:bold;font-size:12px;display:flex;justify-content:space-between;margin-top:4px\">";
+    h+="<span>Za placilo EUR</span><span>"+f2(d.skupajDDV)+"</span></div></td></tr></table>";
+    h+="<div style=\"font-size:10px;margin-bottom:10px\">";
+    h+="Blago DDV 22%: osnova "+f2(d.material+d.kabliranje+d.drobni)+" / DDV "+f2((d.material+d.kabliranje+d.drobni)*0.22)+" / vrednost "+f2((d.material+d.kabliranje+d.drobni)*1.22)+"<br>";
+    h+="Storitve DDV 22%: osnova "+f2(d.delo+d.potovanje)+" / DDV "+f2((d.delo+d.potovanje)*0.22)+" / vrednost "+f2((d.delo+d.potovanje)*1.22)+"</div>";
+  }
+
+  if(d.sifraTehnika){h+="<div style=\"font-size:10px;color:#888;margin-bottom:8px\">Referenca tehnika: "+d.sifraTehnika+"</div>";}
+
+  // SPLOSNA DOLOCILA
+  h+="<div style=\"margin-top:16px;padding-top:12px;border-top:1px solid #ddd;font-size:9px;color:#555\"><strong>Splosna in komercialna dolocila:</strong><br><br>";
+  h+="<strong>Placilo:</strong> Placilo racuna - kalkukacije (zakljucek del s podpisom delovnega naloga). Dobavljeno opremo in izvedene storitve bo prodajalec obracunal z mesecnimi kalkukacijami in koncno kalkukacijo.<br>";
+  h+="<strong>Nacin placila:</strong> S placilnim nalogom na TRR: FIT VAROVANJE, d.d.: 0202 5001 3359 138<br>";
+  h+="<strong>Cene:</strong> Cene so fiksne za cas veljavnosti predracuna. Cene ne vsebujejo DDV, razen ce ni v predracunu drugace navedeno.<br>";
+  h+="<strong>Dodatna dela:</strong> Dodatna dela opravimo in zaracunamo po dejanskih stroških; to je po porabljenem casu in materialu na osnovi predhodnega dogovora.<br>";
+  h+="<strong>Rok izvedbe:</strong> Dobavo in montažo izvedemo v roku 30 dni od prejema pisnega narocila oz. po dogovoru.<br>";
+  h+="<strong>Garancija:</strong> Za vso ponujeno opremo nudimo 12 mesecno garancijo. Ob podpisu pogodbe o vzdrževanju nudimo na opremo 30 mesecno garancijo.<br>";
+  h+="<strong>Rezervni deli:</strong> Kot pooblascena servisna organizacija zagotavljamo originalne rezervne dele iz tega predracuna za celotno obdobje deklarirane zivljenjske dobe.<br>";
+  h+="<strong>Reklamacije:</strong> Reklamacije upoštevamo le ce so podane v pisni obliki najkasneje v 8 dneh po prevzemu opreme.<br>";
+  h+="<strong>Servisiranje:</strong> Naše podjetje je pooblascena servisna organizacija za garancijsko in izven garancijsko vzdrževanje in servisiranje ponujene opreme.</div>";
+
+  // PODPIS
+  h+="<div style=\"margin-top:24px;display:flex;justify-content:space-between\">";
+  h+="<div style=\"font-size:9px;color:#888;border-top:1px solid #333;width:180px;text-align:center;padding-top:3px\">Žig in podpis narocnika</div>";
+  h+="<div style=\"font-size:9px;color:#888;border-top:1px solid #333;width:180px;text-align:center;padding-top:3px\">Direktor: Pavel Peter Merzel</div>";
+  h+="</div>";
+  h+="<div style=\"margin-top:20px;font-size:9px;color:#999;text-align:center\">Pri placilu s placilnim nalogom navedite model 00 in sklic "+d.docNumber+".</div>";
+  h+="</div>";
+
+  document.getElementById("pdfContent").innerHTML=h;
+  document.getElementById("pdfOverlay").style.display="block";
+  document.getElementById("pdfOverlay").scrollTop=0;
+}
+
+function zapriPDF(){document.getElementById("pdfOverlay").style.display="none";}
+function napaka(msg){var b=document.getElementById("errorBox");b.textContent=msg;b.className="error-box visible";setTimeout(function(){b.className="error-box";},4000);}
+</script>
+</body>
+</html>
