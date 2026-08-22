@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>FIT Varovanje — Vstop v demo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23e8193c'/%3E%3Cpath d='M50 16 L78 27 V52 C78 70 65 81 50 86 C35 81 22 70 22 52 V27 Z' fill='%23fff'/%3E%3Cpath d='M50 26 L70 34 V52 C70 65 61 73 50 77 C39 73 30 65 30 52 V34 Z' fill='%23e8193c'/%3E%3C/svg%3E">
+<script src="/gate.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:#111111; color:#fff; font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:24px;
+    background-image:radial-gradient(ellipse 760px 440px at 50% -120px, rgba(232,25,60,.18), transparent 65%);
+  }
+  .card { max-width:430px; width:100%; text-align:center; }
+  .mark { display:flex; justify-content:center; margin-bottom:20px; }
+  .mark svg { filter:drop-shadow(0 6px 18px rgba(232,25,60,.35)); }
+  .kicker {
+    font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase;
+    color:#e8193c; margin-bottom:10px;
+  }
+  h1 { font-size:23px; margin-bottom:10px; line-height:1.25; }
+  p.sub { color:#9a9a9a; font-size:14px; line-height:1.6; margin-bottom:20px; }
+
+  .codebox {
+    background:#1a1a1a; border:1px solid rgba(232,25,60,.35); border-radius:12px;
+    padding:14px 16px; margin-bottom:16px; text-align:left;
+    display:flex; align-items:center; gap:14px;
+  }
+  .codebox .lbl { font-size:11.5px; color:#9a9a9a; line-height:1.4; }
+  .codebox .val {
+    margin-left:auto; font-size:19px; font-weight:800; letter-spacing:.18em; color:#ff8ba0;
+    font-family:ui-monospace,"Cascadia Mono",Consolas,monospace; white-space:nowrap;
+  }
+
+  form { display:flex; flex-direction:column; gap:11px; }
+  input {
+    font:inherit; text-align:center; letter-spacing:.2em; font-weight:700; text-transform:uppercase;
+    background:#1a1a1a; color:#fff; border:1px solid rgba(255,255,255,.14);
+    border-radius:12px; padding:15px 14px;
+  }
+  input::placeholder { letter-spacing:.12em; font-weight:600; color:#5a5254; }
+  input:focus { outline:2px solid #e8193c; border-color:#e8193c; }
+  button {
+    font:inherit; font-weight:700; border:0; cursor:pointer;
+    background:#e8193c; color:#fff; border-radius:12px; padding:15px;
+  }
+  button:hover { background:#c5122d; }
+  .err { color:#ff8ba0; font-size:13px; min-height:18px; }
+  .once {
+    margin-top:16px; font-size:12.5px; color:#7d7477; line-height:1.6;
+    display:flex; align-items:flex-start; gap:8px; text-align:left;
+  }
+  .once b { color:#a89fa2; font-weight:700; }
+  .once .ic { color:#e8193c; flex:none; }
+  .brand { margin-top:30px; font-size:11px; letter-spacing:2px; color:#5e5558; text-transform:uppercase; }
+  .brand b { color:#e8193c; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark">
+      <svg viewBox="0 0 100 100" width="56" height="56"><rect width="100" height="100" rx="22" fill="#e8193c"/><path d="M50 16 L78 27 V52 C78 70 65 81 50 86 C35 81 22 70 22 52 V27 Z" fill="#fff"/><path d="M50 26 L70 34 V52 C70 65 61 73 50 77 C39 73 30 65 30 52 V34 Z" fill="#e8193c"/></svg>
+    </div>
+    <div class="kicker">Zasebna predstavitev</div>
+    <h1>Demo portal, pripravljen za FIT Varovanje</h1>
+    <p class="sub">Portal ni javno objavljen. Za vstop vpišite spodnjo dostopno kodo.</p>
+
+    <div class="codebox">
+      <span class="lbl">Vaša dostopna koda<br>za to predstavitev</span>
+      <span class="val" id="shown">FIT2026</span>
+    </div>
+
+    <form id="f">
+      <input type="text" id="code" placeholder="VPIŠITE KODO" autocomplete="off" autofocus>
+      <div class="err" id="err"></div>
+      <button type="submit">Vstopi v demo</button>
+    </form>
+
+    <div class="once">
+      <span class="ic">✓</span>
+      <span><b>Enkratni vstop.</b> Kodo vpišete samo prvič — ta naprava si vstop zapomni,
+      zato vas portal pozneje ne bo več spraševal.</span>
+    </div>
+
+    <div class="brand"><b>FIT</b> VAROVANJE · DEMO PORTAL</div>
+  </div>
+<script>
+var input = document.getElementById("code");
+// klik na prikazano kodo jo vpiše namesto tipkanja
+document.getElementById("shown").addEventListener("click", function () {
+  input.value = "FIT2026";
+  input.focus();
+});
+document.getElementById("shown").style.cursor = "pointer";
+document.getElementById("shown").title = "Kliknite za samodejni vnos";
+
+document.getElementById("f").addEventListener("submit", function (e) {
+  e.preventDefault();
+  var v = input.value.trim().toUpperCase();
+  if (v === "FIT2026") {
+    try { localStorage.setItem("fit-demo-dostop", v); } catch (err) {}
+    var next = new URLSearchParams(location.search).get("next") || "/";
+    if (next.charAt(0) !== "/" || next.indexOf("//") === 0) next = "/";
+    location.replace(next);
+  } else {
+    document.getElementById("err").textContent = "Napačna koda — poskusite znova.";
+    input.value = "";
+    input.focus();
+  }
+});
+</script>
+</body>
+</html>
