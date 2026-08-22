@@ -587,6 +587,7 @@ function syncLiveReviewItem() {
   if (!m || document.getElementById("btn-" + m.id)) return;
   EMAILS.unshift(m);
   addMailButton(m, true);
+  select(m);
 }
 
 syncLiveReviewItem();
