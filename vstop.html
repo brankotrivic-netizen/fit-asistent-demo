@@ -67,17 +67,12 @@
     </div>
     <div class="kicker">Zasebna predstavitev</div>
     <h1>Demo portal, pripravljen za FIT Varovanje</h1>
-    <p class="sub">Portal ni javno objavljen. Za vstop vpišite spodnjo dostopno kodo.</p>
-
-    <div class="codebox">
-      <span class="lbl">Vaša dostopna koda<br>za to predstavitev</span>
-      <span class="val" id="shown">FIT2026</span>
-    </div>
+    <p class="sub">Portal ni javno objavljen. Za vstop vpišite dostopno kodo, ki ste jo prejeli za predstavitev.</p>
 
     <form id="f">
       <input type="text" id="code" placeholder="VPIŠITE KODO" autocomplete="off" autofocus>
       <div class="err" id="err"></div>
-      <button type="submit">Vstopi v demo</button>
+      <button type="submit" id="submitBtn">Vstopi v demo</button>
     </form>
 
     <div class="once">
@@ -90,26 +85,35 @@
   </div>
 <script>
 var input = document.getElementById("code");
-// klik na prikazano kodo jo vpiše namesto tipkanja
-document.getElementById("shown").addEventListener("click", function () {
-  input.value = "FIT2026";
-  input.focus();
-});
-document.getElementById("shown").style.cursor = "pointer";
-document.getElementById("shown").title = "Kliknite za samodejni vnos";
+var submitBtn = document.getElementById("submitBtn");
 
-document.getElementById("f").addEventListener("submit", function (e) {
+document.getElementById("f").addEventListener("submit", async function (e) {
   e.preventDefault();
   var v = input.value.trim().toUpperCase();
-  if (v === "FIT2026") {
-    try { localStorage.setItem("fit-demo-dostop", v); } catch (err) {}
+  document.getElementById("err").textContent = "";
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Preverjam …";
+  try {
+    var response = await fetch("/api/session", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: v })
+    });
+    if (response.ok) {
     var next = new URLSearchParams(location.search).get("next") || "/";
     if (next.charAt(0) !== "/" || next.indexOf("//") === 0) next = "/";
     location.replace(next);
-  } else {
+      return;
+    }
     document.getElementById("err").textContent = "Napačna koda — poskusite znova.";
     input.value = "";
     input.focus();
+  } catch (err) {
+    document.getElementById("err").textContent = "Povezave trenutno ni mogoče preveriti. Poskusite znova.";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Vstopi v demo";
   }
 });
 </script>

@@ -120,6 +120,15 @@
     color: var(--muted); padding: 14px 18px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   }
   .pane-label .addr { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--ink); }
+  .live-sync {
+    margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 700;
+    color: var(--muted); display: inline-flex; align-items: center; gap: 5px;
+  }
+  .live-sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .live-sync.ok { color: var(--ok); }
+  .live-sync.ok::before { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-bg); }
+  .live-sync.error { color: var(--danger); }
+  .live-sync.error::before { background: var(--danger); }
 
   .inbox { border-right: 1px solid var(--line); background: var(--surface-2); min-width: 0; }
   @media (max-width: 860px) { .inbox { border-right: 0; border-bottom: 1px solid var(--line); } }
@@ -309,9 +318,9 @@
 
   <div class="app">
     <div class="inbox">
-      <div class="pane-label">Prejeta pošta — <span class="addr">prodaja@fitvarovanje.si</span></div>
+      <div class="pane-label">Prejeta pošta — <span class="addr">prodaja@fitvarovanje.si</span><span class="live-sync" id="liveSync">Povezujem …</span></div>
       <div id="mailList"></div>
-      <div class="inbox-hint">Kliknite e-mail in poglejte, kaj asistent naredi iz njega. Primeri so izmišljeni, a taki, kot jih dobivate vsak dan.</div>
+      <div class="inbox-hint">Novi testi iz Gmaila se prikažejo samodejno. Seznam se osveži vsakih 30 sekund; noben odgovor se ne pošlje brez človeka.</div>
     </div>
 
     <div class="detail">
@@ -507,55 +516,64 @@ const EMAILS = [
   }
 ];
 
+function liveReviewItem(p) {
+  if (!p || typeof p !== "object") return null;
+  const missingRaw = Array.isArray(p.missing_data) ? p.missing_data : [];
+  const created = p.created_at ? new Date(p.created_at) : new Date();
+  const validCreated = Number.isNaN(created.getTime()) ? new Date() : created;
+  const product = p.sku || p.description
+    ? [{
+        sys: p.description || p.sku || "Izdelek",
+        obj: p.sku || "—",
+        loc: "—",
+        note: [p.quantity, p.unit].filter(Boolean).join(" ") || "—"
+      }]
+    : null;
+  const status = String(p.status || "novo");
+  const displayName = [p.customer_name, p.company_name].filter(Boolean).join(" — ") || "Novo Gmail povpraševanje";
+
+  return {
+    id: "live-" + String(p.id || Date.now()),
+    sourceId: p.id,
+    live: true,
+    from: displayName,
+    fromEmail: "naslov skrit v varnem pregledu",
+    time: validCreated.toLocaleTimeString("sl-SI", { hour: "2-digit", minute: "2-digit" }),
+    subj: String(p.subject || "BUMA TEST"),
+    snip: String(p.summary || "AI pripravlja podatke za človeški pregled."),
+    body: String(p.summary || ""),
+    intent: status === "za_potrditev" ? "AI osnutek — čaka potrditev" : "AI obdelava — " + status,
+    intentClass: "intent",
+    conf: "Živi Gmail test iz n8n",
+    flags: [{ t: "Brez avtomatskega pošiljanja", c: "warn" }],
+    summary: String(p.summary || "AI analiza je zaključena."),
+    items: product,
+    missing: missingRaw.map((x) => ({ text: String(x), crit: false })),
+    draft: String(p.draft_reply || ""),
+    noDraftText: "Osnutek se še pripravlja. Seznam se bo samodejno osvežil.",
+    sheet: {
+      stranka: String(p.customer_name || "Testno sporočilo"),
+      podjetje: String(p.company_name || "—"),
+      sistem: [p.sku, p.description].filter(Boolean).join(" — ") || String(p.email_type || "povpraševanje"),
+      manjka: missingRaw.join(", ") || "—",
+      status
+    }
+  };
+}
+
 function reviewItemFromHash() {
   const prefix = "#review=";
   if (!location.hash.startsWith(prefix)) return null;
 
   try {
     const raw = location.hash.slice(prefix.length);
-    let p;
+    let payload;
     try {
-      p = JSON.parse(decodeURIComponent(raw));
+      payload = JSON.parse(decodeURIComponent(raw));
     } catch {
-      p = JSON.parse(raw);
+      payload = JSON.parse(raw);
     }
-    const missingRaw = Array.isArray(p.missing_data) ? p.missing_data : [];
-    const created = p.created_at ? new Date(p.created_at) : new Date();
-    const product = p.sku || p.description
-      ? [{
-          sys: p.description || p.sku || "Izdelek",
-          obj: p.sku || "—",
-          loc: "—",
-          note: [p.quantity, p.unit].filter(Boolean).join(" ") || "—"
-        }]
-      : null;
-
-    return {
-      id: "live-" + String(p.id || Date.now()),
-      live: true,
-      from: "Novo testno povpraševanje",
-      fromEmail: "naslov skrit v pregledu",
-      time: created.toLocaleTimeString("sl-SI", { hour: "2-digit", minute: "2-digit" }),
-      subj: String(p.subject || "BUMA TEST"),
-      snip: String(p.summary || "AI je pripravil osnutek za človeški pregled."),
-      body: String(p.summary || ""),
-      intent: "AI osnutek — čaka potrditev",
-      intentClass: "intent",
-      conf: "Živi test iz n8n",
-      flags: [{ t: "Brez avtomatskega pošiljanja", c: "warn" }],
-      summary: String(p.summary || "AI analiza je zaključena."),
-      items: product,
-      missing: missingRaw.map((x) => ({ text: String(x), crit: false })),
-      draft: String(p.draft_reply || ""),
-      noDraftText: "Osnutek še ni pripravljen.",
-      sheet: {
-        stranka: "Testno sporočilo",
-        podjetje: "—",
-        sistem: [p.sku, p.description].filter(Boolean).join(" — ") || String(p.email_type || "povpraševanje"),
-        manjka: missingRaw.join(", ") || "—",
-        status: String(p.status || "za_potrditev")
-      }
-    };
+    return liveReviewItem(payload);
   } catch {
     return null;
   }
@@ -565,10 +583,11 @@ const mailList = document.getElementById("mailList");
 const emptyEl = document.getElementById("empty");
 const procEl = document.getElementById("processing");
 const resultEl = document.getElementById("result");
+const liveSyncEl = document.getElementById("liveSync");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let procTimers = [];
 
-function addMailButton(m, prepend = false) {
+function createMailButton(m) {
   const b = document.createElement("button");
   b.className = "mail"; b.type = "button"; b.id = "btn-" + m.id;
   b.innerHTML =
@@ -576,11 +595,66 @@ function addMailButton(m, prepend = false) {
     '<div class="subj">' + esc(String(m.subj)) + '</div>' +
     '<div class="snip">' + esc(String(m.snip)) + '</div>';
   b.addEventListener("click", () => select(m));
+  return b;
+}
+
+function addMailButton(m, prepend = false) {
+  const b = createMailButton(m);
   if (prepend) mailList.prepend(b);
   else mailList.appendChild(b);
 }
 
 EMAILS.forEach(m => addMailButton(m));
+
+function upsertLiveItem(payload) {
+  const item = liveReviewItem(payload);
+  if (!item) return null;
+  const existingIndex = EMAILS.findIndex((entry) => entry.id === item.id);
+  if (existingIndex >= 0) {
+    EMAILS[existingIndex] = item;
+    const oldButton = document.getElementById("btn-" + item.id);
+    if (oldButton) {
+      const wasActive = oldButton.classList.contains("active");
+      const replacement = createMailButton(item);
+      oldButton.replaceWith(replacement);
+      if (wasActive) {
+        replacement.classList.add("active");
+        render(item);
+      }
+    }
+    return item;
+  }
+  EMAILS.unshift(item);
+  addMailButton(item, true);
+  return item;
+}
+
+async function loadLiveInbox() {
+  try {
+    const response = await fetch("/api/live-inbox", {
+      credentials: "same-origin",
+      cache: "no-store"
+    });
+    if (response.status === 401) {
+      const next = location.pathname + location.search + location.hash;
+      location.replace("/vstop.html?next=" + encodeURIComponent(next));
+      return;
+    }
+    if (!response.ok) throw new Error("Live inbox unavailable");
+    const payload = await response.json();
+    const rows = Array.isArray(payload.items) ? payload.items : [];
+    rows.slice().reverse().forEach((row) => upsertLiveItem(row));
+    liveSyncEl.textContent = rows.length ? "Živo · " + rows.length + " testov" : "Živo · brez testov";
+    liveSyncEl.className = "live-sync ok";
+    if (!document.querySelector(".mail.active") && rows.length) {
+      const first = EMAILS.find((entry) => entry.id === "live-" + String(rows[0].id));
+      if (first) select(first);
+    }
+  } catch {
+    liveSyncEl.textContent = "Povezava začasno ni na voljo";
+    liveSyncEl.className = "live-sync error";
+  }
+}
 
 function syncLiveReviewItem() {
   const m = reviewItemFromHash();
@@ -594,6 +668,8 @@ syncLiveReviewItem();
 window.addEventListener("hashchange", syncLiveReviewItem);
 setTimeout(syncLiveReviewItem, 0);
 setTimeout(syncLiveReviewItem, 500);
+loadLiveInbox();
+setInterval(loadLiveInbox, 30000);
 
 function select(m) {
   document.querySelectorAll(".mail").forEach(x => x.classList.remove("active"));
@@ -673,7 +749,7 @@ function render(m) {
   if (m.draft) {
     h += '<div class="sec"><div class="sec-label">Osnutek odgovora</div><div class="draft">' +
          '<div class="draft-head"><span>Za: <b>' + m.fromEmail + '</b> · Zadeva: Re: ' + esc(m.subj) + '</span>' +
-         '<span class="draft-badge">Čaka v vašem Gmailu</span></div>' +
+         '<span class="draft-badge">Čaka na vašo potrditev</span></div>' +
          '<div class="draft-body">' + draftHtml(m.draft) + '</div>' +
          '<div class="draft-note">Označena polja (<span class="ph">[TERMIN OGLEDA]</span>, <span class="ph">[CENA]</span> …) vedno izpolni komercialist — asistent nikoli sam ne obljublja cen, terminov in varnostnih rešitev.</div>' +
          '</div></div>';

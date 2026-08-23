@@ -1,18 +1,21 @@
 /* FIT Varovanje — stalni demo portal. */
 (function () {
-  // dostopna koda — demo vidi samo, kdor ima kodo
-  var ACCESS = "FIT2026";
-  try {
-    if (
-      location.pathname.indexOf("vstop") === -1 &&
-      location.pathname.indexOf("potekel") === -1 &&
-      localStorage.getItem("fit-demo-dostop") !== ACCESS
-    ) {
-      var next = location.pathname + location.search + location.hash;
-      location.replace("/vstop.html?next=" + encodeURIComponent(next));
-      return;
-    }
-  } catch (e) {}
+  var isPublicPage =
+    location.pathname.indexOf("vstop") !== -1 ||
+    location.pathname.indexOf("potekel") !== -1;
+
+  if (!isPublicPage) {
+    fetch("/api/session", { credentials: "same-origin", cache: "no-store" })
+      .then(function (response) {
+        if (response.ok) return;
+        var next = location.pathname + location.search + location.hash;
+        location.replace("/vstop.html?next=" + encodeURIComponent(next));
+      })
+      .catch(function () {
+        var next = location.pathname + location.search + location.hash;
+        location.replace("/vstop.html?next=" + encodeURIComponent(next));
+      });
+  }
 
   // diskretna značka "DEMO"
   document.addEventListener("DOMContentLoaded", function () {
