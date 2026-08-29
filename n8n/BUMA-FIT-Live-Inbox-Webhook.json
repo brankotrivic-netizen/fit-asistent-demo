@@ -1,0 +1,133 @@
+{
+  "name": "BUMA FIT Live Inbox Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "fit-live-inbox",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a0a6a7b2-ff20-4d17-82e1-942f7653e2da",
+      "name": "FIT live inbox webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-560, 0],
+      "webhookId": "fit-live-inbox"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $input.first().json;\nconst headers = request.headers || {};\nconst providedSecret = String(headers['x-buma-secret'] || '');\nconst expectedSecret = String($env.N8N_SHARED_SECRET || '');\nconst valid = Boolean(expectedSecret) && providedSecret === expectedSecret;\nreturn [{ json: {\n  valid,\n  http_status: valid ? 200 : 403,\n  error: valid ? '' : 'Invalid shared secret'\n} }];"
+      },
+      "id": "92bb1e0c-bd36-4f41-b664-998042861462",
+      "name": "Validate live-inbox secret",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-340, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "live-secret-valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "462f2b95-eb71-4b07-83e1-3b6330f61d58",
+      "name": "Secret valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: false, error: $json.error } }}",
+        "options": { "responseCode": "={{ $json.http_status }}" }
+      },
+      "id": "336ce249-d782-4bd4-91bd-e4a59ad8523e",
+      "name": "Reject invalid secret",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [100, 140]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "FIT Inbound Emails",
+          "mode": "name"
+        },
+        "returnAll": true
+      },
+      "id": "3ab3cf9e-4039-4fca-a87b-16bdd8039f0f",
+      "name": "Read FIT Inbound Emails",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [100, -80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((row) => Object.keys(row).length > 0)\n  .slice(0, 100);\nreturn [{ json: {\n  success: true,\n  source: 'FIT Inbound Emails',\n  count: rows.length,\n  items: rows\n} }];"
+      },
+      "id": "1b367ac1-5ce5-4fb3-95b7-38a56b1414ee",
+      "name": "Build live inbox response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, -80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "63ba99c6-a840-498d-89a9-fd23d6678734",
+      "name": "Return live inbox",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [540, -80]
+    }
+  ],
+  "connections": {
+    "FIT live inbox webhook": {
+      "main": [[{ "node": "Validate live-inbox secret", "type": "main", "index": 0 }]]
+    },
+    "Validate live-inbox secret": {
+      "main": [[{ "node": "Secret valid?", "type": "main", "index": 0 }]]
+    },
+    "Secret valid?": {
+      "main": [
+        [{ "node": "Read FIT Inbound Emails", "type": "main", "index": 0 }],
+        [{ "node": "Reject invalid secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read FIT Inbound Emails": {
+      "main": [[{ "node": "Build live inbox response", "type": "main", "index": 0 }]]
+    },
+    "Build live inbox response": {
+      "main": [[{ "node": "Return live inbox", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "versionId": "5e2173ca-7758-4187-9140-cd543ee918c1",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

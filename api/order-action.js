@@ -62,9 +62,11 @@ function n8nResult(payload = {}) {
   const nested = payload?.data && typeof payload.data === "object" ? payload.data : {};
   const status = text(payload.status || nested.status, 40).toLowerCase();
   const emailSent = payload.email_sent === true || payload.emailSent === true || nested.email_sent === true || ["sent", "poslano", "email_sent"].includes(status);
+  const testMode = payload.test_mode === true || nested.test_mode === true || status === "dry_run";
   return {
     email_sent: emailSent,
-    status: emailSent ? "sent" : status === "send_error" || status === "error" ? "send_error" : "accepted",
+    status: emailSent ? "sent" : status === "send_error" || status === "error" ? "send_error" : testMode ? "dry_run" : "accepted",
+    test_mode: testMode,
     sent_at: text(payload.sent_at || nested.sent_at, 100),
     message_id: text(payload.message_id || nested.message_id, 240),
     send_error: text(payload.send_error || payload.error || nested.send_error, 2000),
@@ -145,19 +147,6 @@ export default async function handler(req, res) {
   if (preparedAction.error) return res.status(preparedAction.code === "MANUAL_REVIEW_REQUIRED" ? 409 : 400).json(preparedAction);
   if (preparedAction.action !== "approve") return res.status(202).json({ success: true, status: "prepared", message: "Akcija je pripravljena. E-pošta ni bila poslana.", prepared_action: preparedAction });
 
-  if (String(process.env.N8N_TEST_MODE || "").toLowerCase() === "true") {
-    return res.status(200).json({
-      success: true,
-      status: "dry_run",
-      delivery: "dry_run",
-      email_sent: false,
-      duplicate: false,
-      message: "Dry-run je uspešen. Gmail in n8n webhook nista bila kontaktirana.",
-      action_id: preparedAction.action_id,
-      idempotency_key: preparedAction.idempotency_key,
-    });
-  }
-
   try {
     const result = await deliverApproveOnce(preparedAction);
     if (result.status === "send_error") {
@@ -165,13 +154,18 @@ export default async function handler(req, res) {
     }
     return res.status(200).json({
       success: true,
-      status: result.email_sent ? "sent" : "accepted",
+      status: result.status,
       delivery: result.delivery,
       email_sent: result.email_sent,
+      test_mode: result.test_mode === true,
       sent_at: result.sent_at,
       message_id: result.message_id,
       duplicate: result.duplicate,
-      message: result.email_sent ? "Poslano." : "n8n je potrdil sprejem. E-pošta še ni potrjena kot poslana.",
+      message: result.email_sent
+        ? "Poslano."
+        : result.status === "dry_run"
+          ? "n8n je zaključil varnostna preverjanja v dry-run načinu. Gmail ni bil kontaktiran."
+          : "n8n je potrdil sprejem. E-pošta še ni potrjena kot poslana.",
       action_id: preparedAction.action_id,
       idempotency_key: preparedAction.idempotency_key,
     });

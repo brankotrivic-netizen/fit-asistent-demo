@@ -46,7 +46,7 @@ window.fetch = async (input, init = {}) => {
         current.status = "osnutek_posodobljen";
       } else if (body.action === "approve") {
         current.draft_reply = body.draft_reply;
-        current.status = responsePayload.email_sent === true ? "sent" : "sprejeto_v_n8n";
+        current.status = responsePayload.email_sent === true ? "sent" : responsePayload.status === "dry_run" ? "dry_run" : "sprejeto_v_n8n";
         current.sent_at = responsePayload.sent_at || "";
         current.message_id = responsePayload.message_id || "";
         current.send_error = "";

@@ -199,8 +199,10 @@ function detailFields(order) {
 function approvalUi(order) {
   const sent = order.status === "poslano";
   const accepted = order.status === "sprejeto_v_n8n";
+  const dryRun = order.status === "dry_run";
   if (state.busyAction === "approve") return { label: "Pošiljam...", locked: true, pill: "" };
   if (sent) return { label: "Poslano", locked: true, pill: "✓ Poslano" };
+  if (dryRun) return { label: "Dry-run potrjen", locked: true, pill: "✓ Dry-run · Gmail ni bil poslan" };
   if (accepted) return { label: "Sprejeto v n8n", locked: true, pill: "✓ Sprejeto v n8n" };
   return { label: "Potrdi", locked: state.busy, pill: "" };
 }
@@ -279,7 +281,7 @@ function renderDetail(message = "", messageIsError = false) {
 
 async function submitAction(action, editedDraft = "") {
   const order = selectedOrder();
-  if (!order || state.busy || (action === "approve" && ["poslano", "sprejeto_v_n8n"].includes(order.status))) return;
+  if (!order || state.busy || (action === "approve" && ["poslano", "sprejeto_v_n8n", "dry_run"].includes(order.status))) return;
 
   state.busy = true;
   state.busyAction = action;
@@ -310,7 +312,7 @@ async function submitAction(action, editedDraft = "") {
       order.status = "osnutek_posodobljen";
       state.editing = false;
     } else if (action === "approve") {
-      order.status = payload.email_sent === true ? "poslano" : "sprejeto_v_n8n";
+      order.status = payload.email_sent === true ? "poslano" : payload.status === "dry_run" ? "dry_run" : "sprejeto_v_n8n";
     } else {
       order.status = "rocna_obdelava_pripravljena";
     }

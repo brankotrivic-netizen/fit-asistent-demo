@@ -11,9 +11,9 @@ N8N_SHARED_SECRET=dolg-naključen-skrivni-niz
 N8N_TEST_MODE=true
 ```
 
-`N8N_TEST_MODE=true` mora ostati vključeno med razvojem: backend takrat vrne dry-run rezultat, ne pokliče n8n webhooka in ne izvede Gmail pošiljanja. Produkcijsko pošiljanje omogočite šele po ločenem testu z `N8N_TEST_MODE=false`.
+`N8N_TEST_MODE=true` mora ostati vključeno med razvojem. Backend tudi v tem načinu pokliče `N8N_ORDER_ACTION_URL`, pošlje `test_mode: true` ter počaka, da n8n izvede secret validation, lookup in validacijo shranjene odločitve. n8n mora nato obvezno vrniti dry-run rezultat, ne da bi dosegel Gmail node. Produkcijsko pošiljanje omogočite šele po ločenem testu z `N8N_TEST_MODE=false`.
 
-Nobena od teh vrednosti ne sme biti dodana v frontend ali Git. `N8N_SHARED_SECRET` API pošlje samo server-to-server v headerju `x-buma-secret`.
+Nobena od teh vrednosti ne sme biti dodana v frontend ali Git. `N8N_SHARED_SECRET` oba API-ja pošljeta samo server-to-server v headerju `x-buma-secret`: approve webhooku in read-only live-inbox webhooku.
 
 ## Live inbox pogodba
 
@@ -25,6 +25,8 @@ thread_id, auto_reply_count, sent_at, message_id, send_error
 ```
 
 Starejši zapisi brez strukturirane odločitve se zaradi varnosti prikažejo kot `review_required`, ne kot samodejni odgovor.
+
+Read-only n8n webhook mora pred branjem `FIT Inbound Emails` primerjati header `x-buma-secret` z n8n environment variable `N8N_SHARED_SECRET` in ob napačni vrednosti vrniti `401` ali `403`. Uvozljiv primer je `n8n/BUMA-FIT-Live-Inbox-Webhook.json`.
 
 ## Človeška potrditev
 

@@ -67,11 +67,22 @@ const items = [
 
 http.createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
+  if (req.headers["x-buma-secret"] !== "browser-test-secret") {
+    res.statusCode = 403;
+    return res.end(JSON.stringify({ error: "Invalid shared secret" }));
+  }
   if (req.method === "GET" && req.url === "/inbox") return res.end(JSON.stringify({ items }));
   if (req.method === "POST" && req.url === "/action") {
     let raw = "";
     req.on("data", (chunk) => { raw += chunk; });
-    req.on("end", () => setTimeout(() => res.end(JSON.stringify({ status: "sent", email_sent: true, sent_at: new Date().toISOString(), message_id: "mock-sent-message" })), 650));
+    req.on("end", () => {
+      const body = raw ? JSON.parse(raw) : {};
+      if (body.test_mode !== true) {
+        res.statusCode = 409;
+        return res.end(JSON.stringify({ error: "Fixture permits dry-run requests only", email_sent: false }));
+      }
+      return setTimeout(() => res.end(JSON.stringify({ status: "dry_run", test_mode: true, email_sent: false })), 650);
+    });
     return;
   }
   res.statusCode = 404;

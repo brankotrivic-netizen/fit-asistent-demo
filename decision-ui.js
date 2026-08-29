@@ -16,6 +16,7 @@ function selectedOrder() {
 function displayStatus(order) {
   const status = String(order?.status || "").toLowerCase();
   if (["sent", "poslano", "email_sent"].includes(status)) return "Poslano";
+  if (status === "dry_run") return "Dry-run potrjen";
   if (["send_error", "napaka_pri_posiljanju"].includes(status)) return "Napaka pri pošiljanju";
   return decisions[order?.decision] || "Čaka potrditev";
 }

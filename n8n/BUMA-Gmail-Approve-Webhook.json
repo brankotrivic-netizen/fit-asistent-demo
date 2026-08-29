@@ -12,24 +12,31 @@
       "name": "FIT approve webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-900, 0],
+      "position": [-1180, 0],
       "webhookId": "fit-order-action"
     },
     {
       "parameters": {
-        "jsCode": "const request = $input.first().json;\nconst headers = request.headers || {};\nconst body = request.body || request;\nconst providedSecret = String(headers['x-buma-secret'] || '');\nconst expectedSecret = String($env.N8N_SHARED_SECRET || '');\nconst required = ['order_id','action','sender_email','subject','draft_reply','decision','status'];\nconst missing = required.filter((key) => !String(body[key] ?? '').trim());\nlet valid = true;\nlet http_status = 200;\nlet error = '';\nif (!expectedSecret || providedSecret !== expectedSecret) { valid = false; http_status = 403; error = 'Invalid shared secret'; }\nelse if (missing.length) { valid = false; http_status = 400; error = `Missing fields: ${missing.join(', ')}`; }\nelse if (body.action !== 'approve') { valid = false; http_status = 400; error = 'Unsupported action'; }\nelse if (body.decision === 'manual_required') { valid = false; http_status = 409; error = 'manual_required cannot be sent automatically'; }\nconst idempotency_key = String(headers['x-idempotency-key'] || body.idempotency_key || '').trim();\nif (valid && !idempotency_key) { valid = false; http_status = 400; error = 'Missing idempotency key'; }\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys = store.approveKeys || {};\nconst duplicate = valid && Boolean(store.approveKeys[idempotency_key]);\nif (valid && !duplicate) store.approveKeys[idempotency_key] = { status: 'pending', created_at: new Date().toISOString() };\nreturn [{ json: { ...body, valid, http_status, error, idempotency_key, duplicate, test_mode: body.test_mode === true } }];"
+        "jsCode": "const request = $input.first().json;\nconst headers = request.headers || {};\nconst body = request.body || request;\nconst providedSecret = String(headers['x-buma-secret'] || '');\nconst expectedSecret = String($env.N8N_SHARED_SECRET || '');\nconst required = ['order_id', 'action', 'sender_email', 'subject', 'draft_reply', 'status'];\nconst missing = required.filter((key) => !String(body[key] ?? '').trim());\nlet valid = true;\nlet http_status = 200;\nlet error = '';\nif (!expectedSecret || providedSecret !== expectedSecret) {\n  valid = false;\n  http_status = 403;\n  error = 'Invalid shared secret';\n} else if (missing.length) {\n  valid = false;\n  http_status = 400;\n  error = 'Missing fields: ' + missing.join(', ');\n} else if (body.action !== 'approve') {\n  valid = false;\n  http_status = 400;\n  error = 'Unsupported action';\n}\nconst idempotency_key = String(headers['x-idempotency-key'] || body.idempotency_key || '').trim();\nif (valid && !idempotency_key) {\n  valid = false;\n  http_status = 400;\n  error = 'Missing idempotency key';\n}\nreturn [{ json: { ...body, valid, http_status, error, idempotency_key, test_mode: body.test_mode === true } }];"
       },
       "id": "5dd929b4-2b98-4c70-bcdf-ec1e73a6a5ca",
-      "name": "Validate secret and idempotency",
+      "name": "Validate secret and payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-680, 0]
+      "position": [-960, 0]
     },
     {
       "parameters": {
         "conditions": {
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
-          "conditions": [{ "id": "valid-request", "leftValue": "={{ $json.valid }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }],
+          "conditions": [
+            {
+              "id": "valid-request",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
           "combinator": "and"
         },
         "options": {}
@@ -38,25 +45,100 @@
       "name": "Valid request?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-450, 0]
+      "position": [-740, 0]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "FIT Inbound Emails",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "order_id",
+              "keyValue": "={{ $('Validate secret and payload').item.json.order_id }}"
+            }
+          ]
+        },
+        "limit": 2
+      },
+      "id": "906207e3-35af-4ba4-815d-d48b2c3a878a",
+      "name": "Lookup FIT Inbound Emails",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [-520, -80],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Validate secret and payload').first().json;\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => Object.keys(row).length > 0);\nconst requestedId = String(request.order_id || '').trim();\nconst stored = rows.find((row) => String(row.order_id || row.id || '').trim() === requestedId);\nlet valid = true;\nlet http_status = 200;\nlet error = '';\nif (!stored) {\n  valid = false;\n  http_status = 404;\n  error = 'Order was not found in FIT Inbound Emails';\n}\nconst storedDecision = String(stored?.decision || '').trim().toLowerCase();\nconst storedStatus = String(stored?.status || '').trim().toLowerCase();\nconst gmail_message_id = String(stored?.gmail_message_id || stored?.inbound_message_id || stored?.message_id || '').trim();\nif (valid && storedDecision !== 'review_required') {\n  valid = false;\n  http_status = 409;\n  error = 'Stored decision ' + (storedDecision || 'missing') + ' cannot be approved';\n}\nif (valid && ['sent', 'poslano', 'email_sent'].includes(storedStatus)) {\n  valid = false;\n  http_status = 409;\n  error = 'Order is already marked as sent';\n}\nif (valid && !gmail_message_id) {\n  valid = false;\n  http_status = 409;\n  error = 'Trusted Gmail message id is missing';\n}\nreturn [{ json: {\n  ...request,\n  valid,\n  http_status,\n  error,\n  sender_email: String(stored?.sender_email || stored?.sender || request.sender_email || ''),\n  subject: String(stored?.subject || request.subject || ''),\n  decision: storedDecision,\n  status: storedStatus,\n  thread_id: String(stored?.thread_id || ''),\n  gmail_message_id,\n  lookup_verified: Boolean(stored),\n  decision_validated: valid\n} }];"
+      },
+      "id": "f6c36736-1f29-4c25-96f1-449408853848",
+      "name": "Validate trusted order decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-300, -80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "trusted-order-valid",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "19331300-9e1d-4268-9915-63df6501892a",
+      "name": "Trusted order valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-80, -80]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: false, status: 'rejected', error: $json.error, email_sent: false } }}",
+        "responseBody": "={{ { success: false, status: 'rejected', error: $json.error, email_sent: false, test_mode: $json.test_mode === true } }}",
         "options": { "responseCode": "={{ $json.http_status }}" }
       },
       "id": "3b97e365-06db-4410-9925-786391cc1cb8",
       "name": "Reject request",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [-210, 180]
+      "position": [140, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys = store.approveKeys || {};\nconst dedupe_key = (item.test_mode ? 'test' : 'live') + ':' + item.idempotency_key;\nconst previous = store.approveKeys[dedupe_key];\nconst duplicate = Boolean(previous);\nif (!duplicate) {\n  store.approveKeys[dedupe_key] = { status: 'pending', created_at: new Date().toISOString() };\n}\nreturn [{ json: {\n  ...item,\n  dedupe_key,\n  duplicate,\n  duplicate_status: String(previous?.status || ''),\n  duplicate_email_sent: previous?.status === 'sent'\n} }];"
+      },
+      "id": "05716d42-a703-4b9f-9cad-f416c23defdb",
+      "name": "Idempotency gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [140, -100]
     },
     {
       "parameters": {
         "conditions": {
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
-          "conditions": [{ "id": "duplicate", "leftValue": "={{ $json.duplicate }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }],
+          "conditions": [
+            {
+              "id": "duplicate",
+              "leftValue": "={{ $json.duplicate }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
           "combinator": "and"
         },
         "options": {}
@@ -65,25 +147,32 @@
       "name": "Duplicate?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-210, -40]
+      "position": [360, -100]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { success: true, status: 'accepted', duplicate: true, email_sent: false } }}",
+        "responseBody": "={{ { success: true, status: $json.duplicate_status || 'accepted', duplicate: true, test_mode: $json.test_mode === true, email_sent: $json.duplicate_email_sent === true } }}",
         "options": { "responseCode": 200 }
       },
       "id": "f04e4690-930e-4a88-9fab-83299653d3cc",
       "name": "Duplicate accepted",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [30, -180]
+      "position": [580, -220]
     },
     {
       "parameters": {
         "conditions": {
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
-          "conditions": [{ "id": "test-mode", "leftValue": "={{ $json.test_mode }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }],
+          "conditions": [
+            {
+              "id": "test-mode",
+              "leftValue": "={{ $json.test_mode }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
           "combinator": "and"
         },
         "options": {}
@@ -92,17 +181,17 @@
       "name": "Test mode?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [30, 40]
+      "position": [580, -40]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys[item.idempotency_key] = { status: 'dry_run', created_at: new Date().toISOString() };\nreturn [{ json: { success: true, status: 'accepted', test_mode: true, email_sent: false, idempotency_key: item.idempotency_key } }];"
+        "jsCode": "const item = $input.first().json;\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys[item.dedupe_key] = { status: 'dry_run', created_at: new Date().toISOString() };\nreturn [{ json: {\n  success: true,\n  status: 'dry_run',\n  test_mode: true,\n  email_sent: false,\n  lookup_verified: item.lookup_verified === true,\n  decision_validated: item.decision_validated === true,\n  idempotency_key: item.idempotency_key\n} }];"
       },
       "id": "945a4772-9fdd-41ad-ad4e-7a2d65b4f10b",
       "name": "Record dry run",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [270, -20]
+      "position": [800, -100]
     },
     {
       "parameters": {
@@ -114,13 +203,13 @@
       "name": "Return dry run",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [510, -20]
+      "position": [1020, -100]
     },
     {
       "parameters": {
         "resource": "message",
         "operation": "reply",
-        "messageId": "={{ $json.gmail_message_id || $json.order_id }}",
+        "messageId": "={{ $json.gmail_message_id }}",
         "emailType": "text",
         "message": "={{ $json.draft_reply }}",
         "options": {}
@@ -129,18 +218,18 @@
       "name": "Gmail reply after approval",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [270, 120],
+      "position": [800, 80],
       "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "jsCode": "const request = $('Validate secret and idempotency').first().json;\nconst gmail = $input.first().json;\nconst message_id = String(gmail.id || gmail.messageId || gmail.message_id || '');\nconst sent_at = new Date().toISOString();\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys[request.idempotency_key] = { status: 'sent', sent_at, message_id };\nreturn [{ json: { success: true, status: 'sent', email_sent: true, sent_at, message_id, idempotency_key: request.idempotency_key } }];"
+        "jsCode": "const request = $('Idempotency gate').first().json;\nconst gmail = $input.first().json;\nconst message_id = String(gmail.id || gmail.messageId || gmail.message_id || '');\nconst sent_at = new Date().toISOString();\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys[request.dedupe_key] = { status: 'sent', sent_at, message_id };\nreturn [{ json: { success: true, status: 'sent', test_mode: false, email_sent: true, sent_at, message_id, idempotency_key: request.idempotency_key } }];"
       },
       "id": "9a44b785-789e-4bb1-bf70-d7fe8e9a6724",
       "name": "Build sent result",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [510, 100]
+      "position": [1020, 40]
     },
     {
       "parameters": {
@@ -152,17 +241,17 @@
       "name": "Return sent",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [750, 100]
+      "position": [1240, 40]
     },
     {
       "parameters": {
-        "jsCode": "const request = $('Validate secret and idempotency').first().json;\nconst failure = $input.first().json;\nconst send_error = String(failure.error?.message || failure.message || failure.error || 'Gmail send failed').slice(0, 2000);\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys[request.idempotency_key] = { status: 'send_error', send_error, failed_at: new Date().toISOString() };\nreturn [{ json: { success: false, status: 'send_error', email_sent: false, send_error, idempotency_key: request.idempotency_key } }];"
+        "jsCode": "const request = $('Idempotency gate').first().json;\nconst failure = $input.first().json;\nconst send_error = String(failure.error?.message || failure.message || failure.error || 'Gmail send failed').slice(0, 2000);\nconst store = $getWorkflowStaticData('global');\nstore.approveKeys[request.dedupe_key] = { status: 'send_error', send_error, failed_at: new Date().toISOString() };\nreturn [{ json: { success: false, status: 'send_error', test_mode: false, email_sent: false, send_error, idempotency_key: request.idempotency_key } }];"
       },
       "id": "6b8b2341-daa1-4c71-b4a7-90366fa86ea8",
       "name": "Build send error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [510, 260]
+      "position": [1020, 200]
     },
     {
       "parameters": {
@@ -174,24 +263,73 @@
       "name": "Return send error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,
-      "position": [750, 260]
+      "position": [1240, 200]
     }
   ],
   "connections": {
-    "FIT approve webhook": { "main": [[{ "node": "Validate secret and idempotency", "type": "main", "index": 0 }]] },
-    "Validate secret and idempotency": { "main": [[{ "node": "Valid request?", "type": "main", "index": 0 }]] },
-    "Valid request?": { "main": [[{ "node": "Duplicate?", "type": "main", "index": 0 }], [{ "node": "Reject request", "type": "main", "index": 0 }]] },
-    "Duplicate?": { "main": [[{ "node": "Duplicate accepted", "type": "main", "index": 0 }], [{ "node": "Test mode?", "type": "main", "index": 0 }]] },
-    "Test mode?": { "main": [[{ "node": "Record dry run", "type": "main", "index": 0 }], [{ "node": "Gmail reply after approval", "type": "main", "index": 0 }]] },
-    "Record dry run": { "main": [[{ "node": "Return dry run", "type": "main", "index": 0 }]] },
-    "Gmail reply after approval": { "main": [[{ "node": "Build sent result", "type": "main", "index": 0 }], [{ "node": "Build send error", "type": "main", "index": 0 }]] },
-    "Build sent result": { "main": [[{ "node": "Return sent", "type": "main", "index": 0 }]] },
-    "Build send error": { "main": [[{ "node": "Return send error", "type": "main", "index": 0 }]] }
+    "FIT approve webhook": {
+      "main": [[{ "node": "Validate secret and payload", "type": "main", "index": 0 }]]
+    },
+    "Validate secret and payload": {
+      "main": [[{ "node": "Valid request?", "type": "main", "index": 0 }]]
+    },
+    "Valid request?": {
+      "main": [
+        [{ "node": "Lookup FIT Inbound Emails", "type": "main", "index": 0 }],
+        [{ "node": "Reject request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Lookup FIT Inbound Emails": {
+      "main": [[{ "node": "Validate trusted order decision", "type": "main", "index": 0 }]]
+    },
+    "Validate trusted order decision": {
+      "main": [[{ "node": "Trusted order valid?", "type": "main", "index": 0 }]]
+    },
+    "Trusted order valid?": {
+      "main": [
+        [{ "node": "Idempotency gate", "type": "main", "index": 0 }],
+        [{ "node": "Reject request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Idempotency gate": {
+      "main": [[{ "node": "Duplicate?", "type": "main", "index": 0 }]]
+    },
+    "Duplicate?": {
+      "main": [
+        [{ "node": "Duplicate accepted", "type": "main", "index": 0 }],
+        [{ "node": "Test mode?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Test mode?": {
+      "main": [
+        [{ "node": "Record dry run", "type": "main", "index": 0 }],
+        [{ "node": "Gmail reply after approval", "type": "main", "index": 0 }]
+      ]
+    },
+    "Record dry run": {
+      "main": [[{ "node": "Return dry run", "type": "main", "index": 0 }]]
+    },
+    "Gmail reply after approval": {
+      "main": [
+        [{ "node": "Build sent result", "type": "main", "index": 0 }],
+        [{ "node": "Build send error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build sent result": {
+      "main": [[{ "node": "Return sent", "type": "main", "index": 0 }]]
+    },
+    "Build send error": {
+      "main": [[{ "node": "Return send error", "type": "main", "index": 0 }]]
+    }
   },
   "pinData": {},
   "active": false,
-  "settings": { "executionOrder": "v1", "saveManualExecutions": true, "saveExecutionProgress": true },
-  "versionId": "038da4b8-c6cf-4db9-ad11-daa7e397facc",
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "versionId": "83544310-cc0a-4d02-8f7d-bb15db0cd47a",
   "meta": { "templateCredsSetupCompleted": false },
   "tags": []
 }

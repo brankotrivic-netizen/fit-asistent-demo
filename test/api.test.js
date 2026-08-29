@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { safeMissingData, sanitizeInboundEmail } from "../api/live-inbox.js";
+import liveInboxHandler, { safeMissingData, sanitizeInboundEmail } from "../api/live-inbox.js";
 import orderActionHandler, {
   prepareOrderAction,
   resetOrderActionCacheForTests,
@@ -71,30 +71,107 @@ test("approve action contains the complete n8n payload contract", () => {
   assert.match(action.idempotency_key, /^[a-f0-9]{64}$/);
 });
 
-test("N8N_TEST_MODE prevents both the n8n call and Gmail delivery", { concurrency: false }, async (t) => {
+test("N8N_TEST_MODE forwards approve to n8n with test_mode true and preserves dry-run response", { concurrency: false }, async (t) => {
   const originalFetch = global.fetch;
   const originalTestMode = process.env.N8N_TEST_MODE;
+  const originalUrl = process.env.N8N_ORDER_ACTION_URL;
+  const originalSecret = process.env.N8N_SHARED_SECRET;
   t.after(() => {
     global.fetch = originalFetch;
     if (originalTestMode === undefined) delete process.env.N8N_TEST_MODE;
     else process.env.N8N_TEST_MODE = originalTestMode;
+    if (originalUrl === undefined) delete process.env.N8N_ORDER_ACTION_URL;
+    else process.env.N8N_ORDER_ACTION_URL = originalUrl;
+    if (originalSecret === undefined) delete process.env.N8N_SHARED_SECRET;
+    else process.env.N8N_SHARED_SECRET = originalSecret;
+    resetOrderActionCacheForTests();
   });
 
   process.env.N8N_TEST_MODE = "true";
+  process.env.N8N_ORDER_ACTION_URL = "https://n8n.example/webhook/fit-order-action";
+  process.env.N8N_SHARED_SECRET = "test-shared-secret";
+  resetOrderActionCacheForTests();
   let calls = 0;
-  global.fetch = async () => {
+  let captured;
+  global.fetch = async (url, init) => {
     calls += 1;
-    throw new Error("fetch must not run in dry-run mode");
+    captured = { url, init, body: JSON.parse(init.body) };
+    return new Response(JSON.stringify({ success: true, status: "dry_run", test_mode: true, email_sent: false }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   };
 
   const res = mockResponse();
   await orderActionHandler({ method: "POST", body: approveBody({ order_id: "dry-run-42" }) }, res);
 
-  assert.equal(calls, 0);
+  assert.equal(calls, 1);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.status, "dry_run");
-  assert.equal(res.body.delivery, "dry_run");
+  assert.equal(res.body.delivery, "n8n");
   assert.equal(res.body.email_sent, false);
+  assert.equal(res.body.test_mode, true);
+  assert.equal(captured.url, process.env.N8N_ORDER_ACTION_URL);
+  assert.equal(captured.body.test_mode, true);
+  assert.equal(captured.init.headers["x-buma-secret"], "test-shared-secret");
+  assert.match(res.body.message, /Gmail ni bil kontaktiran/i);
+});
+
+test("live inbox sends x-buma-secret to the read-only n8n webhook", { concurrency: false }, async (t) => {
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.N8N_LIVE_INBOX_URL;
+  const originalSecret = process.env.N8N_SHARED_SECRET;
+  t.after(() => {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.N8N_LIVE_INBOX_URL;
+    else process.env.N8N_LIVE_INBOX_URL = originalUrl;
+    if (originalSecret === undefined) delete process.env.N8N_SHARED_SECRET;
+    else process.env.N8N_SHARED_SECRET = originalSecret;
+  });
+
+  process.env.N8N_LIVE_INBOX_URL = "https://n8n.example/webhook/fit-live-inbox";
+  process.env.N8N_SHARED_SECRET = "live-inbox-secret";
+  let captured;
+  global.fetch = async (url, init) => {
+    captured = { url, init };
+    return new Response(JSON.stringify({ items: [{ id: "live-1", subject: "Novo naročilo" }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const res = mockResponse();
+  await liveInboxHandler({ method: "GET" }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.count, 1);
+  assert.equal(captured.url, process.env.N8N_LIVE_INBOX_URL);
+  assert.equal(captured.init.headers["x-buma-secret"], "live-inbox-secret");
+});
+
+test("live inbox refuses to call n8n when N8N_SHARED_SECRET is missing", { concurrency: false }, async (t) => {
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.N8N_LIVE_INBOX_URL;
+  const originalSecret = process.env.N8N_SHARED_SECRET;
+  t.after(() => {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.N8N_LIVE_INBOX_URL;
+    else process.env.N8N_LIVE_INBOX_URL = originalUrl;
+    if (originalSecret === undefined) delete process.env.N8N_SHARED_SECRET;
+    else process.env.N8N_SHARED_SECRET = originalSecret;
+  });
+
+  process.env.N8N_LIVE_INBOX_URL = "https://n8n.example/webhook/fit-live-inbox";
+  delete process.env.N8N_SHARED_SECRET;
+  let calls = 0;
+  global.fetch = async () => { calls += 1; };
+
+  const res = mockResponse();
+  await liveInboxHandler({ method: "GET" }, res);
+
+  assert.equal(calls, 0);
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body.code, "N8N_SHARED_SECRET_NOT_CONFIGURED");
 });
 
 test("draft update requires content", () => {

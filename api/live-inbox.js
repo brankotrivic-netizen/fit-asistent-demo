@@ -80,11 +80,13 @@ export default async function handler(req, res) {
   if (req.method !== "GET") { res.setHeader("Allow", "GET"); return res.status(405).json({ error: "Method not allowed" }); }
   const sourceUrl = process.env.N8N_LIVE_INBOX_URL;
   if (!sourceUrl) return res.status(503).json({ error: "Live inbox is not configured", code: "LIVE_INBOX_NOT_CONFIGURED" });
+  const sharedSecret = text(process.env.N8N_SHARED_SECRET, 1000);
+  if (!sharedSecret) return res.status(503).json({ error: "Live inbox authentication is not configured", code: "N8N_SHARED_SECRET_NOT_CONFIGURED" });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const upstream = await fetch(sourceUrl, { method: "GET", headers: { Accept: "application/json" }, signal: controller.signal, cache: "no-store" });
+    const upstream = await fetch(sourceUrl, { method: "GET", headers: { Accept: "application/json", "x-buma-secret": sharedSecret }, signal: controller.signal, cache: "no-store" });
     if (!upstream.ok) throw new Error(`Upstream returned ${upstream.status}`);
     const rows = rowsFromPayload(await upstream.json()).slice(0, 100).map(sanitizeInboundEmail);
     return res.status(200).json({ success: true, source: "FIT Inbound Emails", count: rows.length, items: rows });
