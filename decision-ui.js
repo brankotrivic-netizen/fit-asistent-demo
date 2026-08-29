@@ -105,7 +105,7 @@ function decorateDetail() {
   const edit = document.getElementById("editButton");
   const manual = document.getElementById("manualButton");
   const canReview = order.decision === "review_required";
-  const finalStatus = ["sent", "poslano", "email_sent"].includes(String(order.status).toLowerCase());
+  const finalStatus = ["sent", "poslano", "email_sent", "dry_run", "sprejeto_v_n8n"].includes(String(order.status).toLowerCase());
   if (approve) {
     approve.hidden = !canReview;
     if (canReview && !finalStatus && approve.getAttribute("aria-busy") !== "true") approve.textContent = "Potrdi in pošlji";
