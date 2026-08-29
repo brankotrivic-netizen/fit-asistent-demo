@@ -1,0 +1,19 @@
+.decision-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 14px 16px;
+}
+.decision-auto_clarification .decision-card { border-left-color: var(--ok); }
+.decision-manual_required .decision-card { border-left-color: var(--danger); }
+.decision-title { font-weight: 800; letter-spacing: -.01em; }
+.decision-card > p { color: var(--muted); margin: 4px 0 12px; max-width: 65ch; }
+.decision-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.decision-row { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; }
+.decision-row span { display: block; color: var(--muted); font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+.decision-row b { display: block; overflow-wrap: anywhere; font-size: 12.5px; white-space: pre-line; }
+.auto-audit { display: grid; gap: 8px; margin-top: 10px; }
+.manual-block, .send-error { margin-top: 10px; border: 1px solid var(--danger); background: var(--danger-bg); color: var(--danger); border-radius: 7px; padding: 9px 11px; font-size: 13px; font-weight: 700; }
+.btn[hidden] { display: none; }
+@media (max-width: 620px) { .decision-meta { grid-template-columns: 1fr; } }

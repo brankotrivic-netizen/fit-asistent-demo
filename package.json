@@ -1,0 +1,8 @@
+{
+  "name": "fit-asistent-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/api.test.js test/decision-engine.test.js test/live-inbox-decision.test.js test/order-action-contract-v2.test.js"
+  }
+}
