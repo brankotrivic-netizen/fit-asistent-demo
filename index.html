@@ -33,6 +33,12 @@
             Nova vhodna naročila — <span class="addr">FIT Inbound Emails</span>
             <span class="live-sync" id="liveSync">Povezujem …</span>
           </div>
+          <nav class="inbox-tabs" id="inboxTabs" aria-label="Razdelki vhodne pošte">
+            <button class="inbox-tab active" type="button" data-category="order" aria-pressed="true">Naročila <span data-count="order">0</span></button>
+            <button class="inbox-tab" type="button" data-category="installation" aria-pressed="false">Montaže <span data-count="installation">0</span></button>
+            <button class="inbox-tab" type="button" data-category="service" aria-pressed="false">Servis <span data-count="service">0</span></button>
+            <button class="inbox-tab" type="button" data-category="manual_review" aria-pressed="false">Ročni pregled <span data-count="manual_review">0</span></button>
+          </nav>
           <div id="mailList"></div>
           <div class="inbox-hint">Prikazani so dejanski zapisi iz <b>FIT Inbound Emails</b>. Seznam se osveži vsakih 30 sekund. Browser nikoli nima Gmail credentialov ali skupne skrivnosti.</div>
         </aside>

@@ -9,6 +9,7 @@ const state = {
   busy: false,
   busyAction: "",
   firstLoad: true,
+  activeCategory: "order",
 };
 
 const elements = {
@@ -20,6 +21,7 @@ const elements = {
   retryButton: document.getElementById("retryButton"),
   result: document.getElementById("result"),
   liveSync: document.getElementById("liveSync"),
+  inboxTabs: document.getElementById("inboxTabs"),
 };
 
 const priorityMap = {
@@ -86,6 +88,8 @@ function normalizeOrder(raw) {
     status: value(raw.status, "novo"),
     draftReply: value(raw.draft_reply, ""),
     emailType: value(raw.email_type, "Vhodno naročilo"),
+    category: ["order", "installation", "service"].includes(String(raw.category || "").toLowerCase()) ? String(raw.category).toLowerCase() : "manual_review",
+    categoryConfidence: Number(raw.category_confidence) || 0,
     body: value(raw.body, ""),
     requestedDate: value(raw.requested_date, ""),
     createdAt: validDate,
@@ -148,13 +152,22 @@ function createOrderButton(order) {
 
 function renderList() {
   elements.mailList.replaceChildren();
+  const visibleOrders = state.orders.filter((order) => order.category === state.activeCategory);
+  elements.inboxTabs?.querySelectorAll(".inbox-tab").forEach((button) => {
+    const category = button.dataset.category;
+    const active = category === state.activeCategory;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+    const count = button.querySelector("[data-count]");
+    if (count) count.textContent = String(state.orders.filter((order) => order.category === category).length);
+  });
   if (!state.orders.length) return;
   const heading = document.createElement("div");
-  const urgentCount = state.orders.filter((order) => order.priority === "nujno").length;
+  const urgentCount = visibleOrders.filter((order) => order.priority === "nujno").length;
   heading.className = "folder-head";
-  heading.innerHTML = `<span>FIT Inbound Emails</span><span class="cnt">${urgentCount ? `<span class="nuj">${urgentCount} nujno</span> · ` : ""}${state.orders.length}</span>`;
+  heading.innerHTML = `<span>FIT Inbound Emails</span><span class="cnt">${urgentCount ? `<span class="nuj">${urgentCount} nujno</span> · ` : ""}${visibleOrders.length}</span>`;
   elements.mailList.appendChild(heading);
-  state.orders.forEach((order) => elements.mailList.appendChild(createOrderButton(order)));
+  visibleOrders.forEach((order) => elements.mailList.appendChild(createOrderButton(order)));
 }
 
 function selectedOrder() {
@@ -359,9 +372,11 @@ async function loadOrders({ manual = false } = {}) {
     }
 
     const requestedId = orderIdFromHash();
+    if (!state.orders.some((order) => order.category === state.activeCategory)) state.activeCategory = state.orders[0].category;
     const currentStillExists = state.orders.some((order) => order.id === state.selectedId);
     const requestedExists = state.orders.some((order) => order.id === requestedId);
-    state.selectedId = requestedExists ? requestedId : currentStillExists ? state.selectedId : state.orders[0].id;
+    const firstVisible = state.orders.find((order) => order.category === state.activeCategory);
+    state.selectedId = requestedExists ? requestedId : currentStillExists && state.orders.find((order) => order.id === state.selectedId)?.category === state.activeCategory ? state.selectedId : firstVisible?.id || null;
     renderList();
     renderDetail();
   } catch (error) {
@@ -372,6 +387,16 @@ async function loadOrders({ manual = false } = {}) {
 }
 
 elements.retryButton.addEventListener("click", () => loadOrders({ manual: true }));
+elements.inboxTabs?.addEventListener("click", (event) => {
+  const button = event.target.closest(".inbox-tab[data-category]");
+  if (!button) return;
+  state.activeCategory = button.dataset.category;
+  const visible = state.orders.filter((order) => order.category === state.activeCategory);
+  if (!visible.some((order) => order.id === state.selectedId)) state.selectedId = visible[0]?.id || null;
+  state.editing = false;
+  renderList();
+  renderDetail();
+});
 window.addEventListener("hashchange", () => {
   const requestedId = orderIdFromHash();
   if (requestedId && state.orders.some((order) => order.id === requestedId)) selectOrder(requestedId, false);

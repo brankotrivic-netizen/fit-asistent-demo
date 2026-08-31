@@ -1,4 +1,4 @@
-import { DECISIONS, evaluateEmailDecision, normalizeMissingData } from "../lib/decision-engine.js";
+import { CATEGORIES, DECISIONS, evaluateEmailDecision, normalizeMissingData } from "../lib/decision-engine.js";
 
 const text = (value, max = 4000) => String(value ?? "").trim().slice(0, max);
 
@@ -25,10 +25,12 @@ export function sanitizeInboundEmail(row = {}) {
   const draftReply = first(row, ["draft_reply", "ai_draft_reply", "ai_draft", "draft"], 12000);
   const rawDecision = first(row, ["decision", "ai_decision"], 80);
   const rawConfidence = row.confidence ?? row.ai_confidence;
+  const rawCategory = first(row, ["category", "ai_category"], 80).toLowerCase();
+  const rawCategoryConfidence = row.category_confidence ?? row.ai_category_confidence;
   const hasDecisionOutput = Boolean(rawDecision || String(rawConfidence ?? "").trim());
   const decisionOutput = hasDecisionOutput
-    ? evaluateEmailDecision({ subject, body, missing_data: missingData, draft_reply: draftReply, decision: rawDecision, safe_to_auto_send: row.safe_to_auto_send === true, decision_reason: row.decision_reason, confidence: rawConfidence, auto_reply_count: rawDecision === DECISIONS.AUTO && ["sent", "poslano", "email_sent"].includes(first(row, ["status", "workflow_status"], 80).toLowerCase()) ? Math.max(0, (Number(row.auto_reply_count) || 0) - 1) : row.auto_reply_count })
-    : { decision: DECISIONS.REVIEW, safe_to_auto_send: false, decision_reason: "Obstoječi zapis še nima novega strukturiranega AI odločanja, zato zahteva človeško potrditev.", confidence: 0, missing_data: missingData, draft_reply: draftReply };
+    ? evaluateEmailDecision({ subject, body, missing_data: missingData, draft_reply: draftReply, decision: rawDecision, safe_to_auto_send: row.safe_to_auto_send === true, decision_reason: row.decision_reason, confidence: rawConfidence, category: rawCategory, category_confidence: rawCategoryConfidence, auto_reply_count: rawDecision === DECISIONS.AUTO && ["sent", "poslano", "email_sent"].includes(first(row, ["status", "workflow_status"], 80).toLowerCase()) ? Math.max(0, (Number(row.auto_reply_count) || 0) - 1) : row.auto_reply_count })
+    : { decision: DECISIONS.MANUAL, safe_to_auto_send: false, decision_reason: "Obstoječi zapis še nima novega strukturiranega AI odločanja, zato zahteva človeško potrditev.", confidence: 0, missing_data: missingData, draft_reply: draftReply, category: CATEGORIES.MANUAL_REVIEW, category_confidence: 0, category_review_required: true };
   const rawStatus = first(row, ["status", "workflow_status"], 80);
 
   return {
@@ -42,6 +44,9 @@ export function sanitizeInboundEmail(row = {}) {
     company_name: first(row, ["company_name", "company"], 180),
     subject,
     summary: first(row, ["summary", "ai_summary"], 2500),
+    category: decisionOutput.category,
+    category_confidence: decisionOutput.category_confidence,
+    category_review_required: decisionOutput.category_review_required,
     email_type: first(row, ["email_type", "type", "category"], 100),
     product: first(row, ["product", "product_name", "description", "sku"], 500),
     sku: first(row, ["sku", "product_code"], 160),

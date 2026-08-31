@@ -1,0 +1,594 @@
+{
+  "name": "BUMA Gmail AI Email Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Gmail inbound trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const mail = $input.first().json || {};\nconst headerValue = (name) => {\n  const headers = mail.payload?.headers || mail.headers || [];\n  if (Array.isArray(headers)) return String(headers.find((h) => String(h.name || '').toLowerCase() === name)?.value || '');\n  return String(headers[name] || headers[name.toLowerCase()] || '');\n};\nconst fromRaw = mail.from?.value?.[0] || mail.from || headerValue('from');\nconst fromText = typeof fromRaw === 'object' ? String(fromRaw.address || fromRaw.text || '') : String(fromRaw || '');\nconst senderEmail = String(fromRaw?.address || fromText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i)?.[0] || '').trim();\nconst senderName = String(fromRaw?.name || fromText.replace(/<[^>]+>/g, '').trim());\nconst body = String(mail.textPlain || mail.text || mail.snippet || mail.html || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 12000);\nconst gmailMessageId = String(mail.id || mail.messageId || mail.message_id || '').trim();\nconst threadId = String(mail.threadId || mail.thread_id || '').trim();\nreturn [{ json: {\n  order_id: gmailMessageId,\n  gmail_message_id: gmailMessageId,\n  thread_id: threadId,\n  sender_email: senderEmail,\n  customer_name: senderName,\n  subject: String(mail.subject || headerValue('subject') || 'Brez zadeve').slice(0, 300),\n  body,\n  created_at: new Date(Number(mail.internalDate || Date.now())).toISOString(),\n  email_type: 'inbound_email'\n} }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "Normalize Gmail email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1060,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "FIT Inbound Emails",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "thread_id",
+              "keyValue": "={{ $json.thread_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Lookup Gmail thread",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -840,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $('Normalize Gmail email').first().json;\nconst rows = $input.all().map((item) => item.json || {}).filter((row) => Object.keys(row).length > 0);\nconst sameMessage = rows.some((row) => String(row.gmail_message_id || row.order_id || '') === email.gmail_message_id);\nconst autoReplyCount = rows.reduce((max, row) => Math.max(max, Math.trunc(Number(row.auto_reply_count) || 0)), 0);\nreturn [{ json: { ...email, duplicate: sameMessage, auto_reply_count: autoReplyCount } }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000004",
+      "name": "Build thread context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -620,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "00000000-0000-4000-8000-000000000005",
+              "leftValue": "={{ $json.duplicate === false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000006",
+      "name": "New Gmail message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiziraj vhodni FIT e-mail in vrni IZKLJUČNO veljaven JSON.\n\nFrom: {{ $json.sender_email }}\nSubject: {{ $json.subject }}\nBody: {{ $json.body }}\nDosedanji auto_reply_count v threadu: {{ $json.auto_reply_count }}\n\nObvezna polja: category (order|installation|service), category_confidence (0..1), decision (auto_clarification|review_required|manual_required), safe_to_auto_send (boolean), decision_reason, confidence (0..1), summary, missing_data (array stringov), draft_reply, customer_name, company_name, sku, description, quantity, unit, requested_date, priority.\n\nČe nisi vsaj 85 % prepričan v kategorijo, še vedno izberi najbližjo dovoljeno category, vendar nastavi category_confidence pod 0.85; Safety Gate bo zapis poslal v Ročni pregled.",
+        "options": {
+          "systemMessage": "Si varnostno konservativen FIT e-mail asistent.\n- order = naročilo/povpraševanje za izdelek ali storitev; installation = montaža, vgradnja ali ogled za montažo; service = servis, vzdrževanje ali tehnična težava.\n- Če manjkajo samo osnovni nevtralni podatki (lokacija, velikost, kontakt, tip objekta, opis potrebe), pripravi auto_clarification in vprašaj IZKLJUČNO po teh podatkih. Brez cen, terminov, obljub ali tehničnih odločitev.\n- Če so podatki zbrani ali so potrebne cena, rok, ponudba ali tehnična odločitev, vrni review_required in celoten profesionalen osnutek za človeka.\n- Reklamacije, nujni primeri, vlomi, alarm/VNC napake, pogodbe, pravne ali občutljive varnostne zadeve so manual_required.\n- Če je auto_reply_count >= 1, auto_clarification ni dovoljen.\n- Nikoli ne izmišljaj podatkov. Vrni samo JSON brez markdowna."
+        }
+      },
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Analyze email and category",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -180,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "00000000-0000-4000-8000-000000000008",
+      "name": "OpenAI safety model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -180,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Build thread context').first().json;\nconst raw = String($input.first().json.output || $input.first().json.text || '{}').replace(/^\\s*\\x60\\x60\\x60(?:json)?\\s*|\\s*\\x60\\x60\\x60\\s*$/gi, '');\nlet ai = {};\ntry { ai = JSON.parse(raw); } catch { ai = { decision: 'manual_required', decision_reason: 'AI ni vrnil veljavnega strukturiranega JSON-a.', confidence: 0, category: 'manual_review', category_confidence: 0 }; }\nreturn [{ json: { ...context, ...ai, auto_reply_count: context.auto_reply_count } }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000009",
+      "name": "Merge AI structured output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node: postavite ga takoj za \"Analyze Email + Decision Engine\".\n// Node ne pošilja e-pošte; samo uveljavi strožja pravila nad AI outputom.\nconst manualPatterns = [\n  /reklamac|prito(?:z|ž)b|nezadovoljn/iu,\n  /vlom|varnostn(?:i|ega)? incident|napad|gro(?:z|ž)nj/iu,\n  /nujn(?:a|o|e)? intervenc|napak(?:a|e)?.{0,30}(?:alarm|vnc)|(?:alarm|vnc).{0,30}napak/iu,\n  /pogodb|odpoved|odvet|to(?:z|ž)b|pravn/iu,\n];\nconst reviewPatterns = [\n  /cen|cena|cenik|popust|predra(?:c|č)un|ponudb/iu,\n  /rok izvedbe|rok monta(?:z|ž)e|termin izvedbe|kdaj.{0,30}(?:izvedete|montirate)/iu,\n  /tehni(?:c|č)n.{0,30}re(?:s|š)itev|koliko varnostnikov/iu,\n];\nconst unsafeDraftPatterns = [\n  /€|eur|evr|cena (?:je|bo)|popust (?:je|bo|odobren)/iu,\n  /(?:potrjujemo|zagotavljamo|obljubljamo).{0,45}(?:termin|rok|izvedbo|ceno|popust)/iu,\n  /(?:izvedli|montirali|pri(?:s|š)li) bomo.{0,35}(?:do|dne|ob|v roku)/iu,\n  /(?:potrebujete|dolo(?:c|č)ili smo).{0,25}(?:varnostnikov|konkretno re(?:s|š)itev|sistem)/iu,\n];\nconst safeMissingPatterns = [\n  /naslov|lokacij/iu,\n  /velikost|povr(?:s|š)in|kvadratur/iu,\n  /kontaktna oseba|ime in priimek|kontakt/iu,\n  /telefon|mobiln/iu,\n  /tip objekta|vrsta objekta|namembnost/iu,\n  /opis potrebe|opis objekta|kaj potrebujete/iu,\n  /tip storitve|vrsta storitve|(?:z|ž)elena storitev/iu,\n];\nconst validCategories = new Set(['order', 'installation', 'service']);\n\nfunction asObject(value) {\n  if (value && typeof value === 'object') return value;\n  try { return JSON.parse(String(value || '{}').replace(/^```json\\s*|\\s*```$/g, '')); }\n  catch { return {}; }\n}\n\nreturn $input.all().map((item) => {\n  const input = item.json;\n  const ai = asObject(input.output || input.ai_output || input.analysis || input);\n  const missing = Array.isArray(ai.missing_data) ? ai.missing_data.map(String).filter(Boolean) : [];\n  const confidence = Math.max(0, Math.min(1, Number(ai.confidence) || 0));\n  const requestedCategory = String(ai.category || '').trim().toLowerCase();\n  const categoryConfidence = Math.max(0, Math.min(1, Number(ai.category_confidence) || 0));\n  const categoryReviewRequired = !validCategories.has(requestedCategory) || categoryConfidence < 0.85;\n  const category = categoryReviewRequired ? 'manual_review' : requestedCategory;\n  const autoReplyCount = Math.max(0, Math.trunc(Number(input.auto_reply_count ?? ai.auto_reply_count) || 0));\n  const content = `${input.subject || ''}\\n${input.body || input.text || ''}`;\n  const draft = String(ai.draft_reply || '');\n  let decision = ['auto_clarification', 'review_required', 'manual_required'].includes(ai.decision) ? ai.decision : 'review_required';\n  let reason = String(ai.decision_reason || 'Če obstaja dvom, je potrebna človeška potrditev.');\n  let safe = ai.safe_to_auto_send === true;\n\n  if (categoryReviewRequired) {\n    decision = 'manual_required';\n    safe = false;\n    reason = 'Kategorija ni dovolj zanesljiva, zato je sporočilo usmerjeno v Ročni pregled.';\n  } else if (manualPatterns.some((pattern) => pattern.test(content)) || confidence < 0.90) {\n    decision = 'manual_required';\n    safe = false;\n    reason = confidence < 0.90 ? 'AI confidence je nižji od 0,90.' : 'Zaznana je reklamacija, incident, nujna ali pravno občutljiva zadeva.';\n  } else if (decision === 'auto_clarification') {\n    const allMissingSafe = missing.length > 0 && missing.every((entry) => safeMissingPatterns.some((pattern) => pattern.test(entry)));\n    const draftSafe = draft && !unsafeDraftPatterns.some((pattern) => pattern.test(draft));\n    const contentSafe = !reviewPatterns.some((pattern) => pattern.test(content));\n    if (!safe || !allMissingSafe || !draftSafe || !contentSafe || autoReplyCount >= 1) {\n      decision = 'review_required';\n      safe = false;\n      reason = autoReplyCount >= 1 ? 'V threadu je bil samodejni clarification že poslan.' : 'Samodejni odgovor ni prestal vseh determinističnih varnostnih preverjanj.';\n    }\n  } else {\n    safe = false;\n  }\n\n  return { json: { ...input, ...ai, category, category_confidence: categoryConfidence, category_review_required: categoryReviewRequired, decision, safe_to_auto_send: decision === 'auto_clarification' && safe, decision_reason: reason, confidence, missing_data: missing, draft_reply: draft, thread_id: String(input.thread_id || ai.thread_id || ''), auto_reply_count: autoReplyCount, status: decision } };\n});\n"
+      },
+      "id": "00000000-0000-4000-8000-000000000010",
+      "name": "Deterministic Safety Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst text = (value, max = 12000) => String(value ?? '').trim().slice(0, max);\nreturn [{ json: {\n  order_id: text(item.order_id, 120), email_type: 'inbound_email', sender_email: text(item.sender_email, 320),\n  customer_name: text(item.customer_name, 180), company_name: text(item.company_name, 180), subject: text(item.subject, 300),\n  body: text(item.body), summary: text(item.summary, 2500), sku: text(item.sku, 160), description: text(item.description, 800),\n  quantity: Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : null, unit: text(item.unit, 80), requested_date: text(item.requested_date, 100),\n  priority: text(item.priority, 80) || 'običajna', status: text(item.status, 80), created_at: item.created_at || new Date().toISOString(),\n  missing_data: JSON.stringify(Array.isArray(item.missing_data) ? item.missing_data : []), draft_reply: text(item.draft_reply),\n  category: text(item.category, 80), category_confidence: Number(item.category_confidence) || 0, category_review_required: item.category_review_required === true,\n  decision: text(item.decision, 80), safe_to_auto_send: item.safe_to_auto_send === true, decision_reason: text(item.decision_reason, 2000), confidence: Number(item.confidence) || 0,\n  thread_id: text(item.thread_id, 240), gmail_message_id: text(item.gmail_message_id, 240), auto_reply_count: Math.max(0, Math.trunc(Number(item.auto_reply_count) || 0)),\n  approved_at: null, sent_at: null, message_id: '', send_error: ''\n} }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000011",
+      "name": "Prepare FIT Inbound Emails row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "FIT Inbound Emails",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": null
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000012",
+      "name": "Insert FIT inbound email",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "00000000-0000-4000-8000-000000000013",
+              "leftValue": "={{ $json.decision === 'auto_clarification' && $json.safe_to_auto_send === true && Number($json.auto_reply_count || 0) < 1 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000014",
+      "name": "Auto clarification allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        920,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "00000000-0000-4000-8000-000000000015",
+              "leftValue": "={{ !(String($env.N8N_TEST_MODE || 'true').toLowerCase() === 'false' && String($env.N8N_GMAIL_SEND_ENABLED || 'false').toLowerCase() === 'true') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000016",
+      "name": "N8N test mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1140,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{ json: { ...item, status: 'dry_run_auto_clarification', sent_at: null, message_id: '', send_error: '', auto_reply_count: Math.max(0, Math.trunc(Number(item.auto_reply_count) || 0)) } }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000017",
+      "name": "Record intake dry run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "FIT Inbound Emails",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "order_id",
+              "keyValue": "={{ $json.order_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": null
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000018",
+      "name": "Update dry-run audit",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1580,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $json.gmail_message_id }}",
+        "emailType": "text",
+        "message": "={{ $json.draft_reply }}",
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000019",
+      "name": "Gmail auto clarification reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1360,
+        -60
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('Insert FIT inbound email').first().json;\nconst gmail = $input.first().json || {};\nreturn [{ json: { ...row, status: 'sent', sent_at: new Date().toISOString(), message_id: String(gmail.id || gmail.messageId || gmail.message_id || ''), send_error: '', auto_reply_count: Math.max(0, Math.trunc(Number(row.auto_reply_count) || 0)) + 1 } }];"
+      },
+      "id": "00000000-0000-4000-8000-000000000020",
+      "name": "Mark auto clarification sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "FIT Inbound Emails",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "order_id",
+              "keyValue": "={{ $json.order_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": null
+        },
+        "options": {}
+      },
+      "id": "00000000-0000-4000-8000-000000000021",
+      "name": "Update sent auto clarification",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        -60
+      ]
+    }
+  ],
+  "connections": {
+    "Gmail inbound trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Gmail email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Gmail email": {
+      "main": [
+        [
+          {
+            "node": "Lookup Gmail thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Gmail thread": {
+      "main": [
+        [
+          {
+            "node": "Build thread context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build thread context": {
+      "main": [
+        [
+          {
+            "node": "New Gmail message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Gmail message?": {
+      "main": [
+        [
+          {
+            "node": "Analyze email and category",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "OpenAI safety model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze email and category",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze email and category": {
+      "main": [
+        [
+          {
+            "node": "Merge AI structured output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge AI structured output": {
+      "main": [
+        [
+          {
+            "node": "Deterministic Safety Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deterministic Safety Gate": {
+      "main": [
+        [
+          {
+            "node": "Prepare FIT Inbound Emails row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare FIT Inbound Emails row": {
+      "main": [
+        [
+          {
+            "node": "Insert FIT inbound email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert FIT inbound email": {
+      "main": [
+        [
+          {
+            "node": "Auto clarification allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto clarification allowed?": {
+      "main": [
+        [
+          {
+            "node": "N8N test mode?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "N8N test mode?": {
+      "main": [
+        [
+          {
+            "node": "Record intake dry run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail auto clarification reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record intake dry run": {
+      "main": [
+        [
+          {
+            "node": "Update dry-run audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail auto clarification reply": {
+      "main": [
+        [
+          {
+            "node": "Mark auto clarification sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark auto clarification sent": {
+      "main": [
+        [
+          {
+            "node": "Update sent auto clarification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "versionId": "00000000-0000-4000-8000-000000000022",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -26,6 +26,7 @@ const safeMissingPatterns = [
   /opis potrebe|opis objekta|kaj potrebujete/iu,
   /tip storitve|vrsta storitve|(?:z|ž)elena storitev/iu,
 ];
+const validCategories = new Set(['order', 'installation', 'service']);
 
 function asObject(value) {
   if (value && typeof value === 'object') return value;
@@ -38,6 +39,10 @@ return $input.all().map((item) => {
   const ai = asObject(input.output || input.ai_output || input.analysis || input);
   const missing = Array.isArray(ai.missing_data) ? ai.missing_data.map(String).filter(Boolean) : [];
   const confidence = Math.max(0, Math.min(1, Number(ai.confidence) || 0));
+  const requestedCategory = String(ai.category || '').trim().toLowerCase();
+  const categoryConfidence = Math.max(0, Math.min(1, Number(ai.category_confidence) || 0));
+  const categoryReviewRequired = !validCategories.has(requestedCategory) || categoryConfidence < 0.85;
+  const category = categoryReviewRequired ? 'manual_review' : requestedCategory;
   const autoReplyCount = Math.max(0, Math.trunc(Number(input.auto_reply_count ?? ai.auto_reply_count) || 0));
   const content = `${input.subject || ''}\n${input.body || input.text || ''}`;
   const draft = String(ai.draft_reply || '');
@@ -45,7 +50,11 @@ return $input.all().map((item) => {
   let reason = String(ai.decision_reason || 'Če obstaja dvom, je potrebna človeška potrditev.');
   let safe = ai.safe_to_auto_send === true;
 
-  if (manualPatterns.some((pattern) => pattern.test(content)) || confidence < 0.90) {
+  if (categoryReviewRequired) {
+    decision = 'manual_required';
+    safe = false;
+    reason = 'Kategorija ni dovolj zanesljiva, zato je sporočilo usmerjeno v Ročni pregled.';
+  } else if (manualPatterns.some((pattern) => pattern.test(content)) || confidence < 0.90) {
     decision = 'manual_required';
     safe = false;
     reason = confidence < 0.90 ? 'AI confidence je nižji od 0,90.' : 'Zaznana je reklamacija, incident, nujna ali pravno občutljiva zadeva.';
@@ -62,5 +71,5 @@ return $input.all().map((item) => {
     safe = false;
   }
 
-  return { json: { ...input, ...ai, decision, safe_to_auto_send: decision === 'auto_clarification' && safe, decision_reason: reason, confidence, missing_data: missing, draft_reply: draft, thread_id: String(input.thread_id || ai.thread_id || ''), auto_reply_count: autoReplyCount, status: decision } };
+  return { json: { ...input, ...ai, category, category_confidence: categoryConfidence, category_review_required: categoryReviewRequired, decision, safe_to_auto_send: decision === 'auto_clarification' && safe, decision_reason: reason, confidence, missing_data: missing, draft_reply: draft, thread_id: String(input.thread_id || ai.thread_id || ''), auto_reply_count: autoReplyCount, status: decision } };
 });

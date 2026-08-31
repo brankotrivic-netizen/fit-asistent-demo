@@ -8,6 +8,8 @@ test("že poslani prvi auto clarification ostane označen kot auto_clarification
     subject: "Varovanje prostora",
     body: "Zanimajo nas vaše storitve.",
     decision: "auto_clarification",
+    category: "order",
+    category_confidence: 0.97,
     safe_to_auto_send: true,
     confidence: 0.97,
     missing_data: ["naslov objekta"],
@@ -22,4 +24,5 @@ test("že poslani prvi auto clarification ostane označen kot auto_clarification
   assert.equal(row.safe_to_auto_send, true);
   assert.equal(row.auto_reply_count, 1);
   assert.equal(row.status, "sent");
+  assert.equal(row.category, "order");
 });

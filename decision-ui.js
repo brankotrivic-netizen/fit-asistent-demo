@@ -55,6 +55,7 @@ function makeDecisionSection(order) {
   meta.className = "decision-meta";
   meta.append(
     row("Confidence", Number.isFinite(Number(order.confidence)) ? `${Math.round(Number(order.confidence) * 100)} %` : "—"),
+    row("Kategorija", { order: "Naročila", installation: "Montaže", service: "Servis", manual_review: "Ročni pregled" }[order.category] || "Ročni pregled"),
     row("Thread", order.thread_id || "Ni naveden"),
     row("Samodejni odgovori", String(order.auto_reply_count ?? 0)),
   );

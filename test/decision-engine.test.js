@@ -4,6 +4,8 @@ import { DECISIONS, evaluateEmailDecision } from "../lib/decision-engine.js";
 import { prepareOrderAction } from "../api/order-action.js";
 
 const safeInquiry = {
+  category: "order",
+  category_confidence: 0.96,
   subject: "Povpraševanje za varovanje objekta",
   body: "Zanimajo nas vaše storitve za poslovni prostor.",
   missing_data: ["naslov objekta"],
@@ -11,6 +13,26 @@ const safeInquiry = {
   confidence: 0.96,
   auto_reply_count: 0,
 };
+
+test("nezanesljiva kategorija gre v Ročni pregled", () => {
+  const result = evaluateEmailDecision({ ...safeInquiry, category: "installation", category_confidence: 0.84 });
+  assert.equal(result.category, "manual_review");
+  assert.equal(result.category_review_required, true);
+  assert.equal(result.decision, DECISIONS.MANUAL);
+});
+
+test("manjkajoča zanesljivost kategorije gre v Ročni pregled", () => {
+  const { category_confidence, ...withoutCategoryConfidence } = safeInquiry;
+  const result = evaluateEmailDecision(withoutCategoryConfidence);
+  assert.equal(result.category, "manual_review");
+  assert.equal(result.decision, DECISIONS.MANUAL);
+});
+
+test("zanesljiva servisna klasifikacija ostane v Servisu", () => {
+  const result = evaluateEmailDecision({ ...safeInquiry, category: "service", category_confidence: 0.95 });
+  assert.equal(result.category, "service");
+  assert.equal(result.category_review_required, false);
+});
 
 test("navadno povpraševanje z manjkajočim naslovom dovoli auto_clarification", () => {
   const result = evaluateEmailDecision(safeInquiry);

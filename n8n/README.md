@@ -1,12 +1,13 @@
 # Nadgradnja BUMA Gmail AI Email Intake
 
-Repo vsebuje tri varnostne artefakte:
+Repo vsebuje štiri varnostne artefakte:
 
+- BUMA-Gmail-AI-Email-Intake.json: celoten Gmail → AI → Safety Gate → Data Table tok z obvezno dry-run vejo.
 - Intake-Safety-Gate.js: deterministični Safety Gate za obstoječi intake workflow.
 - BUMA-FIT-Live-Inbox-Webhook.json: read-only webhook za varen prikaz FIT Inbound Emails.
 - BUMA-Gmail-Approve-Webhook.json: webhook za človeško potrditev, z obveznim trusted lookupom in dry-run vejo.
 
-Oba workflowa sta v JSON izvozu namenoma neaktivna (active: false). Gmail credentialov in skrivnosti ni v repozitoriju.
+Vsi workflow JSON-i so namenoma neaktivni (`active: false`). Gmail credentialov, connector tokenov in skrivnosti ni v repozitoriju.
 
 ## 1. Structured AI output
 
@@ -14,6 +15,8 @@ V vozlišču Analyze Email + Decision Engine zahtevajte veljaven JSON brez markd
 
 ~~~json
 {
+  "category": "order | installation | service",
+  "category_confidence": 0.0,
   "decision": "auto_clarification | review_required | manual_required",
   "safe_to_auto_send": false,
   "decision_reason": "",
@@ -24,6 +27,8 @@ V vozlišču Analyze Email + Decision Engine zahtevajte veljaven JSON brez markd
 ~~~
 
 Sistemski prompt mora prepovedati samodejno obljubo cene, popusta, termina, roka, tehnične rešitve, števila varnostnikov in pogodbenih odločitev. Reklamacije, incidenti, nujne intervencije, alarm/VNC napake, pogodbe in confidence pod 0.90 morajo biti manual_required. Ob dvomu mora model izbrati review_required.
+
+Safety Gate sprejme kategorijo samo pri `category_confidence >= 0.85`. Neveljavna ali manj zanesljiva kategorija postane `manual_review` in `manual_required`; tako sporočilo nikoli ne pristane v napačnem poslovnem zavihku.
 
 ## 2. Thread state pred AI analizo
 
@@ -49,6 +54,8 @@ Takoj za AI vozlišče dodajte Code node in vanj prilepite celotno vsebino Intak
 - manual_required: zapis shranite za ročno obdelavo; ne povežite ga z Gmail Send/Reply.
 
 Po uspešnem Gmail Reply shranite status = sent, sent_at in Gmail message_id ter atomarno povečajte auto_reply_count za thread_id. Ob napaki shranite status = send_error; nikoli ne nastavite sent v error veji.
+
+Uvozljivi `BUMA-Gmail-AI-Email-Intake.json` ta tok že vsebuje. Njegov `N8N test mode?` je fail-closed: Gmail veja je mogoča samo, če sta hkrati nastavljena `N8N_TEST_MODE=false` in `N8N_GMAIL_SEND_ENABLED=true`. Za Preview in prvi end-to-end test morata ostati `N8N_TEST_MODE=true` ter `N8N_GMAIL_SEND_ENABLED=false`.
 
 ## 4. Read-only live inbox webhook
 
@@ -80,6 +87,10 @@ Osnovna deduplikacija uporablja workflow static data in ločena namespace-a test
 
 Gmail credential izberite šele za kasnejši, posebej odobren produkcijski test. Med preview testom pustite N8N_TEST_MODE=true; Gmail node se ne izvede. Ne aktivirajte realnega Gmail pošiljanja in ne nastavljajte N8N_TEST_MODE=false, dokler preview tok ni potrjen.
 
-## 6. Obvezna polja v FIT Inbound Emails
+## 6. Namenski Cloudflare tunnel
 
-Poleg obstoječih polj shranjujte še order_id, decision, safe_to_auto_send, decision_reason, confidence, thread_id, gmail_message_id oziroma vhodni message_id, auto_reply_count, sent_at in send_error. Live inbox jih posreduje dashboardu.
+Uporabite izključno tunnel `buma-fit` in hostname `n8n.getbuma.com`, usmerjen na `http://localhost:5678`. Connector token ostane samo v lokalni zaščiteni datoteki ali lokalnem secret store-u. Ne uporabljajte tunela `bm-cistilniservis` in ne dodajajte connector tokena v Git ali Vercel.
+
+## 7. Obvezna polja v FIT Inbound Emails
+
+Poleg obstoječih polj shranjujte še `order_id`, `category`, `category_confidence`, `category_review_required`, `decision`, `safe_to_auto_send`, `decision_reason`, `confidence`, `thread_id`, `gmail_message_id` oziroma vhodni `message_id`, `auto_reply_count`, `sent_at` in `send_error`. Live inbox jih posreduje dashboardu.

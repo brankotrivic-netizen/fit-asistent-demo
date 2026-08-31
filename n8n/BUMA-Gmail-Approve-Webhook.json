@@ -168,7 +168,7 @@
           "conditions": [
             {
               "id": "test-mode",
-              "leftValue": "={{ $json.test_mode }}",
+              "leftValue": "={{ $json.test_mode === true || String($env.N8N_TEST_MODE || 'true').toLowerCase() !== 'false' || String($env.N8N_GMAIL_SEND_ENABLED || 'false').toLowerCase() !== 'true' }}",
               "rightValue": true,
               "operator": { "type": "boolean", "operation": "true", "singleValue": true }
             }
