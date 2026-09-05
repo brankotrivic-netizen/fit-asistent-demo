@@ -6,10 +6,6 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  // strežniška varovalka: po poteku dema tudi API neha delati
-  if (Date.now() >= Date.parse("2026-08-16T00:00:00+02:00")) {
-    return res.status(403).json({ error: "Demo je potekel." });
-  }
 
   const body = req.body || {};
   if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 4) {
@@ -28,6 +24,10 @@ module.exports = async (req, res) => {
 
   // ključ očistimo morebitnega BOM/presledkov iz env vnosa
   const apiKey = (process.env.ANTHROPIC_API_KEY || "").replace(/\uFEFF/g, "").trim();
+
+  if (!apiKey) {
+    return res.status(503).json({ error: "AI storitev ni konfigurirana." });
+  }
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
