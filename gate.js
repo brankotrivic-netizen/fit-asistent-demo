@@ -1,7 +1,8 @@
 /* FIT Varovanje — stalni demo portal. */
 (function () {
-  // dostopna koda — demo vidi samo, kdor ima kodo
-  var ACCESS = "FIT2026";
+  // Zasebna dostopna koda. Stara koda FIT2026 je preklicana.
+  // Dostop ostane zaprt, dokler nove kode ne posredujemo naročniku.
+  var ACCESS = "BUMA-FIT-9K7M-26QX";
   try {
     if (
       location.pathname.indexOf("vstop") === -1 &&
