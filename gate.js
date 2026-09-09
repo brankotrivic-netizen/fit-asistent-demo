@@ -15,8 +15,24 @@
     }
   } catch (e) {}
 
-  // diskretna značka "DEMO"
   document.addEventListener("DOMContentLoaded", function () {
+    // V demo prikazu ne prikazujemo naslova prodaja@fitvarovanje.si,
+    // dokler demo ni povezan z dejanskim FIT nabiralnikom.
+    if (location.pathname.indexOf("/asistent/") === 0) {
+      var hero = document.querySelector(".hero h1");
+      if (hero) hero.textContent = "Vsako povpraševanje, obdelano v minutah.";
+
+      var inboxLabel = document.querySelector(".inbox .pane-label");
+      if (inboxLabel) inboxLabel.textContent = "Prejeta pošta";
+
+      document.querySelectorAll(".step span").forEach(function (node) {
+        if (node.textContent.indexOf("prodaja@fitvarovanje.si") !== -1) {
+          node.textContent = "Asistent spremlja vaš obstoječi e-poštni nabiralnik. Nič se ne seli, nič se ne spreminja.";
+        }
+      });
+    }
+
+    // diskretna značka "DEMO"
     var b = document.createElement("div");
     b.textContent = "STALNI DEMO";
     b.style.cssText =
