@@ -311,7 +311,7 @@
     <div class="inbox">
       <div class="pane-label">Prejeta pošta — <span class="addr">prodaja@fitvarovanje.si</span></div>
       <div id="mailList"></div>
-      <div class="inbox-hint">Kliknite e-mail in poglejte, kaj asistent naredi iz njega. Primeri so izmišljeni, a taki, kot jih dobivate vsak dan.</div>
+      <div class="inbox-hint" id="inboxState" role="status" aria-live="polite">Nalagam prejeto pošto …</div>
     </div>
 
     <div class="detail">
@@ -350,177 +350,33 @@
   </section>
 
   <footer>
-    Demo prikaz, pripravljen za FIT Varovanje d.d. — simulirani podatki, vsi primeri in osebe so izmišljeni.
-    Živ sistem se priklopi na obstoječi nabiralnik v nekaj dneh. · Branko Trivić
+    Prejeta pošta iz FIT Inbound Emails. Pregled osnutkov ne pošilja e-pošte. · Branko Trivić
   </footer>
 </div>
 
 <script>
-const EMAILS = [
-  {
-    id: "m1",
-    from: "Andrej Kovač",
-    fromEmail: "andrej.kovac@gmail.com",
-    time: "08:37",
-    subj: "alarm za hišo",
-    snip: "Pozdravljeni, gradimo hišo v Domžalah, cca 150 m2, zanima nas protivlomni alarm in kakšna kamera …",
-    body: "Pozdravljeni,\ngradimo hišo v Domžalah, cca 150 m2, zanima nas protivlomni alarm in kakšna kamera zunaj.\nKoliko bi to približno stalo in kdaj bi lahko prišli pogledat?\nLp Andrej Kovač",
-    intent: "Novo povpraševanje — montaža",
-    intentClass: "intent",
-    conf: "Zanesljivost 92 %",
-    flags: [ { t: "Sprašuje po ceni", c: "warn" } ],
-    summary: "Zasebnik gradi hišo v Domžalah (~150 m²) in želi protivlomni alarm ter zunanji videonadzor. Sprašuje po okvirni ceni in terminu ogleda. Manjkata točen naslov in podatek, ali želi priklop na varnostno-nadzorni center — osnutek odgovora oboje že vpraša.",
-    items: [
-      { sys: "Alarmni sistem (protivlomni)", obj: "Stanovanjska hiša, ~150 m² (novogradnja)", loc: "Domžale", note: "faza gradnje — idealen čas za razvod" },
-      { sys: "Video nadzor", obj: "Ista hiša — zunanje kamere", loc: "Domžale", note: "število kamer ni navedeno" }
-    ],
-    missing: [
-      { text: "Točen naslov objekta ni naveden — potreben za ogled.", crit: false },
-      { text: "Ali stranka želi priklop na VNC z 24/7 posredovanjem? Osnutek vpraša.", crit: false },
-      { text: "Stranka sprašuje po ceni — cena se poda po ogledu ([CENA] izpolni komercialist).", crit: false }
-    ],
-    draft: "Pozdravljeni, g. Kovač,\n\nhvala za povpraševanje. Za novogradnjo je zdaj ravno pravi čas za načrtovanje protivlomnega sistema in videonadzora — razvod se najlažje uredi pred zaključnimi deli.\n\nZa točno ponudbo predlagamo brezplačen ogled objekta. Na voljo smo [TERMIN OGLEDA] — prosimo, sporočite še točen naslov v Domžalah.\n\nOb ogledu se pogovorimo tudi o priklopu alarma na naš varnostno-nadzorni center s 24-urnim posredovanjem intervencijske ekipe.\n\nOkvirno ceno vam pripravimo po ogledu: [CENA].\n\nLep pozdrav,",
-    sheet: { stranka: "Andrej Kovač", podjetje: "zasebnik", sistem: "alarm + video nadzor (hiša, Domžale)", manjka: "naslov, VNC da/ne", status: "Čaka pregled" }
-  },
-  {
-    id: "m2",
-    from: "Nina Zorko — TransLog",
-    fromEmail: "nina.zorko@translog.si",
-    time: "09:21",
-    subj: "Požarni sistem — novo skladišče Koper",
-    snip: "Pozdravljeni, odpiramo novo skladišče v Kopru, cca 2.000 m2. Potrebujemo sistem javljanja požara …",
-    body: "Pozdravljeni,\nodpiramo novo skladišče v Kopru, cca 2.000 m2. Potrebujemo sistem javljanja požara.\nKdaj lahko začnete z montažo in koliko stane?\nNina Zorko, TransLog d.o.o.",
-    intent: "Novo povpraševanje — montaža",
-    intentClass: "intent",
-    conf: "Zanesljivost 88 %",
-    flags: [ { t: "Večji objekt — projektna zasnova", c: "warn" }, { t: "Sprašuje po ceni in roku", c: "warn" } ],
-    summary: "TransLog odpira skladišče v Kopru (~2.000 m²) in potrebuje certificiran sistem javljanja požara. Pri objektu te velikosti sta potrebna projektna dokumentacija in požarni elaborat — osnutek odgovora to pojasni in predlaga ogled s pregledom dokumentacije. Cene in roka montaže asistent ne obljublja.",
-    items: [
-      { sys: "Požarni sistem (javljanje požara)", obj: "Skladišče, ~2.000 m² (novo)", loc: "Koper", note: "tip skladiščenega blaga ni naveden" }
-    ],
-    missing: [
-      { text: "Tip skladiščenega blaga ni naveden — vpliva na zasnovo sistema in izbiro javljalnikov.", crit: true },
-      { text: "Ali obstajata projektna dokumentacija in požarni elaborat? Osnutek vpraša.", crit: true },
-      { text: "Točen naslov objekta v Kopru.", crit: false }
-    ],
-    draft: "Pozdravljeni, ga. Zorko,\n\nhvala za povpraševanje. Za skladišče velikosti okoli 2.000 m² se sistem javljanja požara zasnuje na podlagi projektne dokumentacije in požarnega elaborata, zato predlagamo, da se najprej oglasimo pri vas na ogledu in pregledamo dokumentacijo.\n\nNa voljo smo [TERMIN OGLEDA] — prosimo, sporočite točen naslov objekta in kontaktno osebo na lokaciji.\n\nKoristno je, če nam vnaprej sporočite še, kakšno blago boste skladiščili, saj to vpliva na izbiro javljalnikov.\n\nPonudbo s ceno in terminom montaže pripravimo po ogledu: [CENA].\n\nLep pozdrav,",
-    sheet: { stranka: "Nina Zorko", podjetje: "TransLog d.o.o.", sistem: "požarni sistem (skladišče 2.000 m², Koper)", manjka: "dokumentacija, tip blaga, naslov", status: "Čaka pregled" }
-  },
-  {
-    id: "m6",
-    from: "Rok Pirc — Elektroinštalacije Pirc",
-    fromEmail: "rok.pirc@elektro-pirc.si",
-    time: "09:35",
-    subj: "Povpraševanje po popisu — poslovna stavba Kranj",
-    snip: "Pozdravljeni, za investitorja opremljamo poslovno stavbo v Kranju. Po popisu rabimo: 8x IP kamera zunanja …",
-    body: "Pozdravljeni,\nza investitorja opremljamo poslovno stavbo v Kranju. Po popisu rabimo:\n- 8x IP kamera zunanja\n- 1x snemalnik 16-kanalni\n- 12x javljalnik gibanja\n- 2x čitalec kartic za vhod\n- 1x alarmna centrala\n- zunanja sirena\nProsim za ponudbo za dobavo in montažo.\nRok Pirc, Elektroinštalacije Pirc d.o.o.",
-    intent: "Novo povpraševanje — montaža po popisu",
-    intentClass: "intent",
-    conf: "Zanesljivost 93 %",
-    flags: [ { t: "Sprašuje po ceni", c: "warn" }, { t: "Partner/izvajalec — projekt za investitorja", c: "warn" } ],
-    summary: "Elektroinštalater opremlja poslovno stavbo v Kranju za investitorja in pošilja konkreten popis: video nadzor, protivlomni sistem in kontrola pristopa — skupaj 6 postavk s količinami. Pri zunanji sireni količina manjka, osnutek odgovora jo že vpraša. Vse količine so izpisane v tabeli spodaj — nič pretipkavanja.",
-    items: [
-      { sys: "Video nadzor", obj: "Poslovna stavba (novogradnja/obnova)", loc: "Kranj", note: "8 kamer + snemalnik" },
-      { sys: "Alarmni sistem (protivlomni)", obj: "Ista stavba", loc: "Kranj", note: "centrala + 12 javljalnikov + sirena" },
-      { sys: "Kontrola pristopa", obj: "Vhod — 2 čitalca kartic", loc: "Kranj", note: "—" }
-    ],
-    qtyItems: [
-      { el: "IP kamera, zunanja", qty: "8", unit: "kos", note: "model ni naveden" },
-      { el: "Snemalnik (NVR), 16-kanalni", qty: "1", unit: "kos", note: "—" },
-      { el: "Javljalnik gibanja", qty: "12", unit: "kos", note: "—" },
-      { el: "Čitalec kartic (kontrola pristopa)", qty: "2", unit: "kos", note: "vhod" },
-      { el: "Alarmna centrala", qty: "1", unit: "kos", note: "—" },
-      { el: "Zunanja sirena", qty: null, unit: "kos", note: "količina ni navedena" }
-    ],
-    missing: [
-      { text: "Zunanja sirena: količina ni navedena — osnutek odgovora jo že vpraša.", crit: true },
-      { text: "Ali obstaja projektna dokumentacija (načrt razvoda, PZI)? Pomembno za ponudbo montaže.", crit: false },
-      { text: "Želeni rok izvedbe ni naveden.", crit: false }
-    ],
-    draft: "Pozdravljeni, g. Pirc,\n\nhvala za povpraševanje. Zabeležili smo popis za poslovno stavbo v Kranju:\n• IP kamera zunanja — 8 kos\n• snemalnik 16-kanalni — 1 kos\n• javljalnik gibanja — 12 kos\n• čitalec kartic — 2 kos\n• alarmna centrala — 1 kos\n• zunanja sirena — prosimo, potrdite še količino\n\nZa ponudbo z montažo prosimo še za projektno dokumentacijo oz. načrt razvoda, če obstaja, in vaš želeni rok izvedbe.\n\nPredlagamo tudi kratek ogled objekta ali tehnični posvet: [TERMIN OGLEDA]. Ponudbo za dobavo in montažo pripravimo takoj zatem: [CENA].\n\nLep pozdrav,",
-    sheet: { stranka: "Rok Pirc", podjetje: "Elektroinštalacije Pirc d.o.o.", sistem: "video + alarm + pristop (popis, poslovna stavba Kranj)", manjka: "količina sirene, dokumentacija, rok", status: "Čaka pregled" }
-  },
-  {
-    id: "m3",
-    from: "Tadej Oblak — ŠD Vrhnika",
-    fromEmail: "tadej.oblak@sd-vrhnika.si",
-    time: "09:48",
-    subj: "varovanje veselice 22.8.",
-    snip: "Pozdravljeni, 22. avgusta organiziramo veselico s koncertom, pričakujemo okoli 800 obiskovalcev …",
-    body: "Pozdravljeni,\n22. avgusta organiziramo veselico s koncertom na športnem igrišču na Vrhniki, pričakujemo okoli 800 obiskovalcev. Prireditev traja od 18h do 2h zjutraj, točili bomo tudi pijačo.\nKoliko varnostnikov bi rabili in kakšna je cena?\nTadej Oblak, ŠD Vrhnika",
-    intent: "Novo povpraševanje — varovanje prireditve",
-    intentClass: "intent",
-    conf: "Zanesljivost 90 %",
-    flags: [ { t: "Sprašuje po ceni in št. varnostnikov", c: "warn" }, { t: "Alkohol na prireditvi — višja ocena tveganja", c: "warn" } ],
-    summary: "ŠD Vrhnika organizira veselico s koncertom (~800 obiskovalcev, 18:00–02:00, strežba alkohola) in potrebuje fizično varovanje prireditve. Število varnostnikov se določi z oceno tveganja in zahtevami zakonodaje — asistent tega ne obljublja, osnutek pa že vpraša po programu prireditve in prijavi dogodka.",
-    items: [
-      { sys: "Fizično varovanje — prireditev", obj: "Veselica s koncertom, ~800 obiskovalcev, 18:00–02:00, strežba pijače", loc: "Vrhnika, športno igrišče", note: "22. 8. 2026" }
-    ],
-    missing: [
-      { text: "Ali je prireditev že prijavljena in kakšne pogoje je določila upravna enota? Osnutek vpraša.", crit: true },
-      { text: "Program prireditve in tloris prizorišča — potrebna za oceno tveganja in izračun števila varnostnikov.", crit: false }
-    ],
-    draft: "Pozdravljeni, g. Oblak,\n\nhvala za povpraševanje. Z veseljem prevzamemo varovanje vaše veselice 22. avgusta.\n\nŠtevilo varnostnikov se pri prireditvah določi na podlagi ocene tveganja, števila obiskovalcev in pogojev iz prijave prireditve. Prosimo, pošljite nam:\n• program prireditve in tloris prizorišča,\n• kopijo prijave prireditve oz. pogoje upravne enote, če jih že imate.\n\nPredlagamo kratek sestanek ali ogled prizorišča: [TERMIN OGLEDA]. Ponudbo s številom varnostnikov in ceno pripravimo takoj zatem: [CENA].\n\nLep pozdrav,",
-    sheet: { stranka: "Tadej Oblak", podjetje: "ŠD Vrhnika", sistem: "varovanje prireditve (veselica ~800, Vrhnika, 22. 8.)", manjka: "prijava prireditve, program", status: "Čaka pregled" }
-  },
-  {
-    id: "m4",
-    from: "Matej Hribar",
-    fromEmail: "matej.hribar@optika-hribar.si",
-    time: "10:05",
-    subj: "NUJNO - vlom v trgovino",
-    snip: "Včeraj ponoči so nam vlomili v trgovino na Viču. Nujno rabimo alarm in kamere, čim prej …",
-    body: "Pozdravljeni,\nvčeraj ponoči so nam vlomili v trgovino na Viču (Tržaška 89). Policija je bila, zdaj pa nujno rabimo alarm in kamere, čim prej, ker imamo na zalogi drago blago.\nProsim, pokličite ali pišite še danes.\nMatej Hribar, Optika Hribar",
-    intent: "Novo povpraševanje — prednostno",
-    intentClass: "intent",
-    conf: "Zanesljivost 94 %",
-    flags: [ { t: "Nujno — svež vlom", c: "danger" }, { t: "Prednostna obravnava", c: "warn" } ],
-    summary: "Svež vlom v trgovino na Viču — stranka pod stresom nujno potrebuje protivlomni alarm in videonadzor. Asistent je povpraševanje označil kot prednostno in komercialista obvestil takoj. Osnutek je empatičen, predlaga hiter ogled ter omeni priklop na VNC z intervencijo — ne obljublja pa ničesar, česar komercialist ne potrdi.",
-    items: [
-      { sys: "Alarmni sistem (protivlomni)", obj: "Trgovina (optika), drago blago na zalogi", loc: "Ljubljana — Vič, Tržaška 89", note: "po vlomu — prednostno" },
-      { sys: "Video nadzor", obj: "Ista trgovina", loc: "Ljubljana — Vič", note: "obseg ni naveden" }
-    ],
-    missing: [
-      { text: "Velikost prostora in število vhodov — komercialist preveri ob klicu ali ogledu.", crit: false }
-    ],
-    draft: "Pozdravljeni, g. Hribar,\n\nžal nam je za vlom — razumemo, da želite prostor čim prej zaščititi.\n\nPredlagamo nujen ogled trgovine na Tržaški 89: na voljo smo [TERMIN OGLEDA]. Ob ogledu vam takoj svetujemo tudi začasne ukrepe do montaže in predstavimo priklop na naš varnostno-nadzorni center z intervencijsko ekipo.\n\nZa hitrejšo obravnavo nas lahko pokličete na [TELEFON] — vaše povpraševanje obravnavamo prednostno.\n\nLep pozdrav,",
-    sheet: { stranka: "Matej Hribar", podjetje: "Optika Hribar", sistem: "alarm + video nadzor (trgovina, Vič)", manjka: "velikost prostora", status: "Čaka pregled — PREDNOSTNO" }
-  },
-  {
-    id: "m5",
-    from: "Irena Božič",
-    fromEmail: "irena.bozic@kovinar-bozic.si",
-    time: "10:52",
-    subj: "PRITOŽBA - lažni alarmi in nihče ne pokliče!!",
-    snip: "Alarm se že tretjič ta mesec sproži sredi noči brez razloga. Plačujemo priklop na center, pa …",
-    body: "Alarm se že tretjič ta mesec sproži sredi noči brez razloga!\nPlačujemo priklop na varnostni center, pa nas nihče ne pokliče nazaj, ko prijavimo napako.\nČe se to ne uredi ta teden, prekinemo pogodbo.\nIrena Božič, Kovinar Božič d.o.o.",
-    intent: "Reklamacija → ročna obdelava",
-    intentClass: "danger",
-    conf: "Zanesljivost 97 %",
-    flags: [ { t: "Nezadovoljna stranka", c: "danger" }, { t: "Grožnja s prekinitvijo pogodbe", c: "danger" } ],
-    summary: "Jezna reklamacija obstoječe stranke — ponavljajoči se lažni alarmi in neodzivnost. Stranka grozi s prekinitvijo pogodbe. Asistent tu namenoma NE pripravi osnutka: občutljive zadeve in reklamacije vedno prevzame človek, takoj in osebno. E-mail je označen kot prednosten.",
-    items: null,
-    missing: [],
-    draft: null,
-    noDraftText: "Za reklamacije in nezadovoljne stranke asistent ne piše osnutkov. E-mail je označen kot prednosten in poslan odgovorni osebi v takojšnjo ročno obravnavo — pri varovanju je zaupanje vse.",
-    sheet: { stranka: "Irena Božič", podjetje: "Kovinar Božič d.o.o.", sistem: "— (reklamacija: lažni alarmi, VNC)", manjka: "—", status: "Ročna obdelava — prednostno" }
-  }
-];
+const EMAILS = [];
 
-function reviewItemFromHash() {
+function reviewItemFromHash(input = null) {
   const prefix = "#review=";
-  if (!location.hash.startsWith(prefix)) return null;
+  if (!input && !location.hash.startsWith(prefix)) return null;
 
   try {
     const raw = location.hash.slice(prefix.length);
-    let p;
+    let p = input;
+    if (!p) {
     try {
       p = JSON.parse(decodeURIComponent(raw));
     } catch {
       p = JSON.parse(raw);
     }
-    const missingRaw = Array.isArray(p.missing_data) ? p.missing_data : [];
-    const created = p.created_at ? new Date(p.created_at) : new Date();
+    }
+    let missingRaw = p.missing_data || [];
+    if (typeof missingRaw === "string") {
+      try { missingRaw = JSON.parse(missingRaw); } catch { missingRaw = [missingRaw]; }
+    }
+    if (!Array.isArray(missingRaw)) missingRaw = [];
+    const created = new Date(p.created_at || "");
     const product = p.sku || p.description
       ? [{
           sys: p.description || p.sku || "Izdelek",
@@ -533,15 +389,15 @@ function reviewItemFromHash() {
     return {
       id: "live-" + String(p.id || Date.now()),
       live: true,
-      from: "Novo testno povpraševanje",
-      fromEmail: "naslov skrit v pregledu",
-      time: created.toLocaleTimeString("sl-SI", { hour: "2-digit", minute: "2-digit" }),
-      subj: String(p.subject || "BUMA TEST"),
+      from: String(p.customer_name || p.sender_email || "Neznan pošiljatelj"),
+      fromEmail: String(p.sender_email || "—"),
+      time: Number.isNaN(created.getTime()) ? "—" : created.toLocaleTimeString("sl-SI", { hour: "2-digit", minute: "2-digit" }),
+      subj: String(p.subject || "Brez zadeve"),
       snip: String(p.summary || "AI je pripravil osnutek za človeški pregled."),
       body: String(p.summary || ""),
-      intent: "AI osnutek — čaka potrditev",
+      intent: String(p.status || "—"),
       intentClass: "intent",
-      conf: "Živi test iz n8n",
+      conf: "FIT Inbound Emails · ID " + String(p.id || "—"),
       flags: [{ t: "Brez avtomatskega pošiljanja", c: "warn" }],
       summary: String(p.summary || "AI analiza je zaključena."),
       items: product,
@@ -549,8 +405,8 @@ function reviewItemFromHash() {
       draft: String(p.draft_reply || ""),
       noDraftText: "Osnutek še ni pripravljen.",
       sheet: {
-        stranka: "Testno sporočilo",
-        podjetje: "—",
+        stranka: String(p.customer_name || p.sender_email || "—"),
+        podjetje: String(p.company_name || "—"),
         sistem: [p.sku, p.description].filter(Boolean).join(" — ") || String(p.email_type || "povpraševanje"),
         manjka: missingRaw.join(", ") || "—",
         status: String(p.status || "za_potrditev")
@@ -580,7 +436,32 @@ function addMailButton(m, prepend = false) {
   else mailList.appendChild(b);
 }
 
-EMAILS.forEach(m => addMailButton(m));
+async function loadInbox() {
+  const state = document.getElementById("inboxState");
+  state.textContent = "Nalagam prejeto pošto …";
+  mailList.setAttribute("aria-busy", "true");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch("/api/live-inbox", { cache: "no-store", signal: controller.signal });
+    if (!response.ok) throw new Error("Inbox unavailable");
+    const payload = await response.json();
+    if (payload.success !== true || !Array.isArray(payload.items)) throw new Error("Invalid inbox");
+    const rows = payload.items.map(p => reviewItemFromHash(p));
+    if (rows.some(row => !row)) throw new Error("Invalid row");
+    EMAILS.splice(0, EMAILS.length, ...rows);
+    mailList.replaceChildren();
+    EMAILS.forEach(m => addMailButton(m));
+    state.textContent = rows.length ? "Živi podatki iz FIT Inbound Emails. Kliknite e-mail za pregled." : "Ni prejetih sporočil.";
+    if (rows.length) select(rows[0]);
+    syncLiveReviewItem();
+  } catch {
+    state.textContent = "Prejete pošte trenutno ni mogoče naložiti. Osvežite stran in poskusite znova.";
+  } finally {
+    clearTimeout(timer);
+    mailList.setAttribute("aria-busy", "false");
+  }
+}
 
 function syncLiveReviewItem() {
   const m = reviewItemFromHash();
@@ -590,10 +471,8 @@ function syncLiveReviewItem() {
   select(m);
 }
 
-syncLiveReviewItem();
+loadInbox();
 window.addEventListener("hashchange", syncLiveReviewItem);
-setTimeout(syncLiveReviewItem, 0);
-setTimeout(syncLiveReviewItem, 500);
 
 function select(m) {
   document.querySelectorAll(".mail").forEach(x => x.classList.remove("active"));
@@ -603,7 +482,7 @@ function select(m) {
 
   procTimers.forEach(clearTimeout); procTimers = [];
 
-  if (reduceMotion) { render(m); return; }
+  if (m.live || reduceMotion) { render(m); return; }
 
   procEl.style.display = "flex";
   const steps = ["ps1","ps2","ps3"].map(id => document.getElementById(id));
@@ -632,8 +511,8 @@ function render(m) {
   let h = "";
 
   h += '<div class="sec"><div class="chips">' +
-       '<span class="chip ' + m.intentClass + '">' + m.intent + '</span>' +
-       '<span class="chip conf">' + m.conf + '</span>' +
+       '<span class="chip ' + m.intentClass + '">' + esc(m.intent) + '</span>' +
+       '<span class="chip conf">' + esc(m.conf) + '</span>' +
        m.flags.map(f => '<span class="chip ' + f.c + '">⚠ ' + f.t + '</span>').join("") +
        '</div></div>';
 
@@ -672,8 +551,8 @@ function render(m) {
 
   if (m.draft) {
     h += '<div class="sec"><div class="sec-label">Osnutek odgovora</div><div class="draft">' +
-         '<div class="draft-head"><span>Za: <b>' + m.fromEmail + '</b> · Zadeva: Re: ' + esc(m.subj) + '</span>' +
-         '<span class="draft-badge">Čaka v vašem Gmailu</span></div>' +
+         '<div class="draft-head"><span>Za: <b>' + esc(m.fromEmail) + '</b> · Zadeva: Re: ' + esc(m.subj) + '</span>' +
+         '<span class="draft-badge">Osnutek — brez pošiljanja</span></div>' +
          '<div class="draft-body">' + draftHtml(m.draft) + '</div>' +
          '<div class="draft-note">Označena polja (<span class="ph">[TERMIN OGLEDA]</span>, <span class="ph">[CENA]</span> …) vedno izpolni komercialist — asistent nikoli sam ne obljublja cen, terminov in varnostnih rešitev.</div>' +
          '</div></div>';
@@ -688,7 +567,7 @@ function render(m) {
        '<span class="confirmed-pill" id="pillOk">✓ Potrjeno</span>' +
        '</div><div class="toast" id="toast"></div>';
 
-  h += '<div class="sec"><div class="sec-label">Vrstica v vaši pregledni tabeli (Google Sheets)</div>' +
+  h += '<div class="sec"><div class="sec-label">FIT Inbound Emails</div>' +
        '<div class="sheet-wrap"><table class="sheet">' +
        '<thead><tr><th>Prejeto</th><th>Stranka</th><th>Podjetje</th><th>Storitev / objekt</th><th>Manjka</th><th>Status</th></tr></thead>' +
        '<tbody><tr><td>danes, ' + m.time + '</td><td>' + esc(m.sheet.stranka) + '</td><td>' + esc(m.sheet.podjetje) + '</td>' +
